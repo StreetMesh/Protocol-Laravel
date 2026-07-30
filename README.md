@@ -79,6 +79,38 @@ record could change after being cited, then an address would name whatever is
 there now rather than what was cited, and every signature over it and every copy
 of it elsewhere would drift apart silently.
 
+## Attestations
+
+A venue signs what happened; a domicile checks it before keeping it. Neither
+side trusts the other, and neither has to still exist for the statement to stay
+checkable.
+
+```php
+use StreetMesh\Protocol\Laravel\Attestations\Attestations;
+
+$attestation = app(Attestations::class)->verify($compact, receivedAt: now());
+
+$attestation->issuer;                    // did:plc:… — who said it
+$attestation->claim('result');           // what they said
+$attestation->checkedAgainstHistory();   // and how confident you get to be
+```
+
+`receivedAt` should be when this server saw the document, not when the document
+says it was issued. The second is asserted by the party being checked and can be
+backdated; the first is asserted by the party doing the checking and cannot.
+
+### `checkedAgainstHistory()` is not decoration
+
+Asked which key an identity was using at a past moment, `did:plc` answers from
+its audit log and `did:web` cannot answer at all — it publishes a document and
+no history, so the best available is the key in use now.
+
+Verifying a year-old record against a key that might have been rotated last week
+is a different act from verifying it against the key that was demonstrably
+current when it was signed. Returning a bare key would make those two
+indistinguishable at the call site, which is precisely where the difference
+matters.
+
 ## Portability
 
 `RecordStore::exportFor()` returns everything of somebody's, in order. A person

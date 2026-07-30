@@ -7,7 +7,9 @@ use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 use StreetMesh\Protocol\Handle;
+use StreetMesh\Protocol\Laravel\Attestations\Attestations;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
+use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Records\Collections;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
 use StreetMesh\Protocol\Network;
@@ -37,6 +39,9 @@ class ProtocolServiceProvider extends ServiceProvider
         $this->app->singleton(Handle::class, fn ($app): Handle => new Handle(
             $app->make(Network::class),
         ));
+
+        $this->app->singleton(DidResolver::class);
+        $this->app->singleton(Attestations::class);
     }
 
     public function boot(): void
