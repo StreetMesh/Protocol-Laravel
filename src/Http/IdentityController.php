@@ -38,7 +38,7 @@ class IdentityController
          */
         $types = array_map(
             fn ($capability): string => $capability->serviceType(),
-            array_values($this->capabilities->all()),
+            $this->capabilities->all(),
         );
 
         return response()->json(DidDocument::for(

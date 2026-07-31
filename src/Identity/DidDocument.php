@@ -27,9 +27,13 @@ final class DidDocument
     {
         $services = [];
 
-        foreach ((array) $serviceType as $index => $type) {
+        foreach ((array) $serviceType as $name => $type) {
             $services[] = [
-                'id' => $index === 0 ? '#atproto_pds' : '#streetmesh_'.strtolower((string) $type),
+                // The first keeps ATProtocol's name so their software finds it;
+                // anything further is named for the capability rather than for
+                // its type, which reads better and stays stable if a type is
+                // renamed.
+                'id' => count($services) === 0 ? '#atproto_pds' : '#streetmesh_'.$name,
                 'type' => $type,
                 'serviceEndpoint' => $serviceEndpoint,
             ];

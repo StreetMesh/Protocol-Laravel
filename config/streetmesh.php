@@ -60,20 +60,23 @@ return [
      | Where capabilities live
      |--------------------------------------------------------------------------
      |
-     | A server offering one capability can give it the front page. A server
-     | offering two cannot give it to both, and neither package can settle which
-     | — so the application says, here.
+     | Capabilities mount under their own names and none of them claims the
+     | root, because two routes sharing a path do not collide loudly in Laravel
+     | — the later one silently replaces the earlier. A package taking the front
+     | page would win or lose on boot order, and nobody would have decided it.
      |
-     | Leave a prefix empty to mount at the root. Exactly one may be empty; two
-     | capabilities at the same path is a collision the router resolves by
-     | whichever loaded first, which is not a decision anybody made.
+     | So the root belongs to the application, and `home` says which capability
+     | somebody arriving at it should be sent to. Null leaves the front page
+     | alone entirely.
      |
      */
 
     'mount' => [
-        'domicile' => env('STREETMESH_MOUNT_DOMICILE', ''),
-        'venue' => env('STREETMESH_MOUNT_VENUE', ''),
+        'domicile' => env('STREETMESH_MOUNT_DOMICILE', 'domicile'),
+        'venue' => env('STREETMESH_MOUNT_VENUE', 'venue'),
     ],
+
+    'home' => env('STREETMESH_HOME'),
 
     'network' => [
         'timeout' => 10,
