@@ -55,6 +55,26 @@ return [
     'venue' => env('STREETMESH_VENUE', false),
     'curve' => env('STREETMESH_CURVE', 'p256'),
 
+    /*
+     |--------------------------------------------------------------------------
+     | Where capabilities live
+     |--------------------------------------------------------------------------
+     |
+     | A server offering one capability can give it the front page. A server
+     | offering two cannot give it to both, and neither package can settle which
+     | — so the application says, here.
+     |
+     | Leave a prefix empty to mount at the root. Exactly one may be empty; two
+     | capabilities at the same path is a collision the router resolves by
+     | whichever loaded first, which is not a decision anybody made.
+     |
+     */
+
+    'mount' => [
+        'domicile' => env('STREETMESH_MOUNT_DOMICILE', ''),
+        'venue' => env('STREETMESH_MOUNT_VENUE', ''),
+    ],
+
     'network' => [
         'timeout' => 10,
         'cache_seconds' => 300,
