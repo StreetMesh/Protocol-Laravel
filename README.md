@@ -33,6 +33,67 @@ wrong. The failure looks exactly like forgery and is data-dependent, so it
 appears intermittent. This package turns that off for the paths that carry
 signatures, so no implementor has to know.
 
+## Identity
+
+A server needs one of its own before anything federated works — a venue signs
+attestations with it, a domicile answers for itself with it.
+
+```php
+use StreetMesh\Protocol\Laravel\Identity\Identities;
+
+$server = app(Identities::class)->forServer();          // made once, then found
+$server->did;                                            // did:web:games.test
+```
+
+Two endpoints come with it, both unauthenticated and both necessarily so. A
+record is meant to be checkable years later by somebody with no relationship to
+this server; if finding out which key signed it required an account, the record
+would only be as durable as an arrangement between two parties.
+
+```
+GET /.well-known/did.json        who this server is, and its key
+GET /.well-known/atproto-did     which identity this hostname stands for
+```
+
+Both directions have to agree. A name pointing at an identity proves only that
+whoever serves the name says so; the document claiming it back is the identity
+agreeing. Either alone lets somebody hang a familiar name on a stranger.
+
+### Residents keep the key that lets them leave
+
+```php
+['identity' => $identity, 'rotationKey' => $rotation] = app(Identities::class)
+    ->forResident('alice.games.test');
+```
+
+The rotation key is generated and **handed back rather than kept**. It is the
+key that can point an identity at a different server, so a resident whose only
+copy lives here could move only with this server's cooperation — which is the
+arrangement this project exists to argue against. This server keeps no copy, so
+it can neither move them nor refuse to.
+
+What the caller does with it is the interface layer's problem, and a real one: a
+passkey cannot hold it, so it means a recovery phrase or an exported file, and a
+design for people who lose things.
+
+### `did:web` now, `did:plc` when you mean it
+
+`did:web` needs nothing but a hostname you already control. `did:plc` costs a
+public, permanent entry in shared infrastructure and buys two things `did:web`
+cannot offer: an identifier that survives its subject moving, and a dated key
+history so something signed years ago can still be checked.
+
+Minting a `did:plc` is never a side effect here. It is asked for explicitly.
+
+Keys are **P-256 by default** because it is the only curve that works for
+`did:web` now and `did:plc` later — an identity minted on Ed25519 could never
+move to the method that makes it portable.
+
+### Requirements
+
+Keys are encrypted at rest, so `APP_KEY` must be set. A server without one
+cannot hold an identity at all.
+
 ## Records
 
 ```php
@@ -72,7 +133,68 @@ A collection nobody has declared cannot be written to at all. That friction is
 deliberate: adding a kind of record should be a decision made once in
 configuration, not a consequence of a mistyped name.
 
-### Records are written once
+### Identity
+
+A server needs one of its own before anything federated works — a venue signs
+attestations with it, a domicile answers for itself with it.
+
+```php
+use StreetMesh\Protocol\Laravel\Identity\Identities;
+
+$server = app(Identities::class)->forServer();          // made once, then found
+$server->did;                                            // did:web:games.test
+```
+
+Two endpoints come with it, both unauthenticated and both necessarily so. A
+record is meant to be checkable years later by somebody with no relationship to
+this server; if finding out which key signed it required an account, the record
+would only be as durable as an arrangement between two parties.
+
+```
+GET /.well-known/did.json        who this server is, and its key
+GET /.well-known/atproto-did     which identity this hostname stands for
+```
+
+Both directions have to agree. A name pointing at an identity proves only that
+whoever serves the name says so; the document claiming it back is the identity
+agreeing. Either alone lets somebody hang a familiar name on a stranger.
+
+### Residents keep the key that lets them leave
+
+```php
+['identity' => $identity, 'rotationKey' => $rotation] = app(Identities::class)
+    ->forResident('alice.games.test');
+```
+
+The rotation key is generated and **handed back rather than kept**. It is the
+key that can point an identity at a different server, so a resident whose only
+copy lives here could move only with this server's cooperation — which is the
+arrangement this project exists to argue against. This server keeps no copy, so
+it can neither move them nor refuse to.
+
+What the caller does with it is the interface layer's problem, and a real one: a
+passkey cannot hold it, so it means a recovery phrase or an exported file, and a
+design for people who lose things.
+
+### `did:web` now, `did:plc` when you mean it
+
+`did:web` needs nothing but a hostname you already control. `did:plc` costs a
+public, permanent entry in shared infrastructure and buys two things `did:web`
+cannot offer: an identifier that survives its subject moving, and a dated key
+history so something signed years ago can still be checked.
+
+Minting a `did:plc` is never a side effect here. It is asked for explicitly.
+
+Keys are **P-256 by default** because it is the only curve that works for
+`did:web` now and `did:plc` later — an identity minted on Ed25519 could never
+move to the method that makes it portable.
+
+### Requirements
+
+Keys are encrypted at rest, so `APP_KEY` must be set. A server without one
+cannot hold an identity at all.
+
+## Records are written once
 
 A correction is a new record that says what it corrects. Not tidiness — if a
 record could change after being cited, then an address would name whatever is

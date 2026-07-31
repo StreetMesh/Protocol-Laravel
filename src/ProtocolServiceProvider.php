@@ -10,6 +10,7 @@ use StreetMesh\Protocol\Handle;
 use StreetMesh\Protocol\Laravel\Attestations\Attestations;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
+use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Protocol\Laravel\Records\Collections;
 use StreetMesh\Protocol\Laravel\Records\CommitLog;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
@@ -56,12 +57,27 @@ class ProtocolServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(DidResolver::class);
+
+        $this->app->singleton(Identities::class, fn (): Identities => new Identities(
+            host: (string) config('streetmesh.host', 'localhost'),
+            defaultCurve: (string) config('streetmesh.curve', 'p256'),
+        ));
         $this->app->singleton(Attestations::class);
     }
 
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
+        /*
+         * Throttled but not authenticated. These answer who this server is, and
+         * a record checkable only by somebody with an account here would be as
+         * durable as the arrangement between two parties rather than outliving
+         * it.
+         */
+        $this->app['router']->middlewareGroup('streetmesh', ['throttle:120,1']);
+
+        $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
 
         $this->publishes([
             __DIR__.'/../config/streetmesh.php' => config_path('streetmesh.php'),

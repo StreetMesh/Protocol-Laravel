@@ -2,8 +2,6 @@
 
 namespace StreetMesh\Protocol\Laravel\Identity;
 
-use StreetMesh\Protocol\Multikey;
-
 /**
  * A key to check a signature against, and how confident we get to be about it.
  *
@@ -44,13 +42,5 @@ final class VerificationKey
     public static function current(string $multikey): self
     {
         return new self($multikey, historical: false);
-    }
-
-    /**
-     * The raw bytes, as the signature checkers want them.
-     */
-    public function base64(): string
-    {
-        return Multikey::toBase64($this->multikey);
     }
 }

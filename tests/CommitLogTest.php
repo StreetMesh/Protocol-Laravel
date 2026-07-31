@@ -3,6 +3,7 @@
 namespace StreetMesh\Protocol\Laravel\Tests;
 
 use RuntimeException;
+use StreetMesh\Protocol\Cid;
 use StreetMesh\Protocol\Commit;
 use StreetMesh\Protocol\Ed25519;
 use StreetMesh\Protocol\Laravel\Records\CommitLog;
@@ -53,7 +54,7 @@ class CommitLogTest extends TestCase
         $this->log()->commit(self::ALICE, $this->key);
 
         // Signed by them, each following the last, and describing what is here.
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
 
         $this->assertSame(2, CommitRecord::query()->where('did', self::ALICE)->count());
     }
@@ -80,7 +81,7 @@ class CommitLogTest extends TestCase
         $this->write('win');
         $this->log()->commit(self::ALICE, $this->key);
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
 
         // A server adds a game Alice never played.
         $this->write('loss');
@@ -88,7 +89,7 @@ class CommitLogTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('not the ones its history commits to');
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
     }
 
     public function test_a_record_removed_afterwards_is_detected(): void
@@ -101,7 +102,7 @@ class CommitLogTest extends TestCase
 
         $this->expectException(RuntimeException::class);
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
     }
 
     public function test_a_history_signed_by_somebody_else_is_refused(): void
@@ -112,7 +113,7 @@ class CommitLogTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('not signed by');
 
-        $this->log()->verify(self::ALICE, Ed25519::generate()->publicKey());
+        $this->log()->verify(self::ALICE, Ed25519::generate()->multikey());
     }
 
     /**
@@ -128,14 +129,18 @@ class CommitLogTest extends TestCase
         $this->write();
         $second = $this->log()->commit(self::ALICE, $this->key);
 
+        // Substitute a commit signed by somebody else entirely, keeping the
+        // stored name — as a database with a stray write would leave it.
+        $forged = Commit::of(self::ALICE, Cid::forBytes('a tree'))->signedWith(Ed25519::generate());
+
         CommitRecord::query()->whereKey($second->id)->toBase()->update([
-            'body' => json_encode([...$second->body, 'prev' => 'bafyreisomethingelse']),
+            'body' => base64_encode($forged->toBytes()),
         ]);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('not signed by');
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
     }
 
     /**
@@ -153,19 +158,19 @@ class CommitLogTest extends TestCase
 
         // The server reissues the first commit covering something else, signs
         // it correctly, and puts it back.
-        $rewritten = Commit::of(self::ALICE, 'bafyreitampered', rev: Tid::parse($first->rev))
+        $rewritten = Commit::of(self::ALICE, Cid::forBytes('a substituted tree'), rev: Tid::parse($first->rev))
             ->signedWith($this->key);
 
         CommitRecord::query()->whereKey($first->id)->toBase()->update([
             'cid' => (string) $rewritten->cid(),
-            'data' => $rewritten->data,
-            'body' => json_encode($rewritten->toArray()),
+            'data' => (string) $rewritten->data,
+            'body' => base64_encode($rewritten->toBytes()),
         ]);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('has been rewritten');
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
     }
 
     public function test_a_commit_cannot_be_edited(): void
@@ -189,13 +194,13 @@ class CommitLogTest extends TestCase
         $this->store()->put(self::ALICE, 'com.streetmesh.messages.direct', ['body' => 'hello']);
         $this->log()->commit(self::ALICE, $this->key);
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
 
         $this->store()->put(self::ALICE, 'com.streetmesh.messages.direct', ['body' => 'not from alice']);
 
         $this->expectException(RuntimeException::class);
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
     }
 
     public function test_one_residents_history_is_untouched_by_another(): void
@@ -207,8 +212,8 @@ class CommitLogTest extends TestCase
         $this->store()->put('did:plc:bob', 'com.streetmesh.games.chess', ['result' => 'win']);
         $this->log()->commit('did:plc:bob', $bobsKey);
 
-        $this->log()->verify(self::ALICE, $this->key->publicKey());
-        $this->log()->verify('did:plc:bob', $bobsKey->publicKey());
+        $this->log()->verify(self::ALICE, $this->key->multikey());
+        $this->log()->verify('did:plc:bob', $bobsKey->multikey());
 
         $this->assertNull($this->log()->head('did:plc:bob')->prev);
     }

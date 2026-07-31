@@ -55,10 +55,18 @@ final class CommitLog
             return CommitRecord::create([
                 'did' => $did,
                 'cid' => (string) $commit->cid(),
-                'prev' => $commit->prev,
-                'data' => $commit->data,
+                'prev' => $commit->prev === null ? null : (string) $commit->prev,
+                'data' => (string) $commit->data,
                 'rev' => $commit->rev,
-                'body' => $commit->toArray(),
+
+                /*
+                 * Kept as the bytes it travels as rather than as JSON. A commit
+                 * is named by the hash of exactly those bytes, so storing a
+                 * decoded copy and re-encoding it later would be trusting two
+                 * encoders to agree — which is the mistake this whole design
+                 * exists to avoid.
+                 */
+                'body' => base64_encode($commit->toBytes()),
                 'created_at' => Carbon::now(),
             ]);
         });
@@ -71,7 +79,7 @@ final class CommitLog
      * them, does each name the one before it, and does the head still describe
      * the records actually here.
      */
-    public function verify(string $did, string $publicKey): void
+    public function verify(string $did, string $multikey): void
     {
         $chain = CommitRecord::query()->where('did', $did)->orderBy('rev')->get();
 
@@ -82,9 +90,9 @@ final class CommitLog
         $previous = null;
 
         foreach ($chain as $link) {
-            $commit = Commit::fromArray($link->body);
+            $commit = Commit::fromBytes((string) base64_decode($link->body, true));
 
-            if (! $commit->verify($publicKey)) {
+            if (! $commit->verify($multikey)) {
                 throw new RuntimeException("Commit [{$link->cid}] is not signed by [{$did}].");
             }
 
@@ -103,7 +111,7 @@ final class CommitLog
 
         $root = (string) $this->tree->root($this->fingerprints($did));
 
-        if ($previous->data !== $root) {
+        if ((string) $previous->data !== $root) {
             /*
              * The chain is intact but no longer describes what is here, which
              * means records were added or removed without committing to them.

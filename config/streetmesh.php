@@ -37,6 +37,24 @@ return [
      |
      */
 
+    /*
+     |--------------------------------------------------------------------------
+     | This server
+     |--------------------------------------------------------------------------
+     |
+     | The host decides this server's own identifier under did:web, so it has to
+     | be the name strangers actually reach it by rather than a local alias.
+     |
+     | P-256 by default because it is the only curve that works both for did:web
+     | now and did:plc later — an identity minted on Ed25519 could never move to
+     | the method that makes it portable.
+     |
+     */
+
+    'host' => env('STREETMESH_HOST', 'localhost'),
+    'venue' => env('STREETMESH_VENUE', false),
+    'curve' => env('STREETMESH_CURVE', 'p256'),
+
     'network' => [
         'timeout' => 10,
         'cache_seconds' => 300,

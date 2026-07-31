@@ -31,9 +31,13 @@ return new class extends Migration
             // When, as a record key, so commits sort like everything else does.
             $table->string('rev', 13);
 
-            // The signature, and the whole commit as signed, so it can be
-            // checked again later without being rebuilt from parts.
-            $table->json('body');
+            /*
+             * The commit exactly as it travels, base64 of its own bytes. Not
+             * JSON: a commit is named by the hash of precisely these bytes, so
+             * storing a decoded copy and re-encoding it later would mean
+             * trusting two encoders to agree.
+             */
+            $table->text('body');
 
             $table->timestamp('created_at');
 

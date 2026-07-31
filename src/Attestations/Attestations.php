@@ -57,7 +57,7 @@ final class Attestations
         $key = $this->resolver->keyAt($keyId, $receivedAt);
 
         try {
-            $claims = Jws::verify($compact, $key->base64());
+            $claims = Jws::verify($compact, $key->multikey);
         } catch (Throwable $e) {
             throw new RuntimeException(
                 "That statement does not verify against the key [{$keyId}] "

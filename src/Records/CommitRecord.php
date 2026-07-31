@@ -15,7 +15,7 @@ use RuntimeException;
  * @property string|null $prev
  * @property string $data
  * @property string $rev
- * @property array<string, mixed> $body
+ * @property string $body the commit as it travels, base64
  * @property Carbon $created_at
  */
 class CommitRecord extends Model
@@ -29,7 +29,6 @@ class CommitRecord extends Model
     protected function casts(): array
     {
         return [
-            'body' => 'array',
             'created_at' => 'datetime',
         ];
     }
