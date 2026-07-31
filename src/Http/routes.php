@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Http\IdentityController;
 
 /*
@@ -20,18 +19,21 @@ Route::middleware('streetmesh')->group(function (): void {
 });
 
 /*
- * The front door, if the application wants one.
+ * There is deliberately no route here for the front page.
  *
- * Registered only when asked for, and only when nothing else has taken the
- * root — a silent replacement is exactly what this arrangement exists to avoid,
- * and doing it here would be committing the offence while preventing it.
+ * The rule this package establishes — that nothing claims the root, because
+ * Laravel replaces a route sharing a path rather than complaining — applies to
+ * this package too, and a redirect registered here would either overwrite the
+ * application's own root or be overwritten by it, silently, depending on boot
+ * order.
+ *
+ * An application that wants its front door to lead somewhere says so itself:
+ *
+ *     Route::redirect('/', '/'.config('streetmesh.mount.domicile'));
+ *
+ * or, to follow whatever is installed rather than naming one:
+ *
+ *     Route::get('/', fn () => redirect()->route(
+ *         app(Capabilities::class)->homeRoute(config('streetmesh.home'))
+ *     ));
  */
-if (($home = config('streetmesh.home')) !== null && ! Route::has('streetmesh.root')) {
-    Route::middleware('web')->get('/', function () use ($home) {
-        $route = app(Capabilities::class)->homeRoute($home);
-
-        abort_unless($route !== null, 404);
-
-        return redirect()->route($route);
-    })->name('streetmesh.root');
-}
