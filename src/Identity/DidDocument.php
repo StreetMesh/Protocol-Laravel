@@ -20,10 +20,21 @@ final class DidDocument
     ];
 
     /**
+     * @param  string|array<int, string>  $serviceType  what this server does
      * @return array<string, mixed>
      */
-    public static function for(Identity $identity, string $serviceEndpoint, string $serviceType): array
+    public static function for(Identity $identity, string $serviceEndpoint, string|array $serviceType): array
     {
+        $services = [];
+
+        foreach ((array) $serviceType as $index => $type) {
+            $services[] = [
+                'id' => $index === 0 ? '#atproto_pds' : '#streetmesh_'.strtolower((string) $type),
+                'type' => $type,
+                'serviceEndpoint' => $serviceEndpoint,
+            ];
+        }
+
         $document = [
             '@context' => self::CONTEXT,
             'id' => $identity->did,
@@ -37,11 +48,7 @@ final class DidDocument
 
             'assertionMethod' => [$identity->keyId()],
 
-            'service' => [[
-                'id' => '#atproto_pds',
-                'type' => $serviceType,
-                'serviceEndpoint' => $serviceEndpoint,
-            ]],
+            'service' => $services,
         ];
 
         if ($identity->handle !== null) {

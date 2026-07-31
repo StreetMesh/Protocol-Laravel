@@ -4,6 +4,7 @@ namespace StreetMesh\Protocol\Laravel\Http;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Identity\DidDocument;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
 
@@ -18,7 +19,10 @@ use StreetMesh\Protocol\Laravel\Identity\Identities;
  */
 class IdentityController
 {
-    public function __construct(private readonly Identities $identities) {}
+    public function __construct(
+        private readonly Identities $identities,
+        private readonly Capabilities $capabilities,
+    ) {}
 
     /**
      * This server's DID document.
@@ -27,10 +31,20 @@ class IdentityController
     {
         $identity = $this->identities->forServer();
 
+        /*
+         * What this server does, taken from what is actually installed rather
+         * than from a separate list — so the document and the application cannot
+         * drift into disagreeing about it.
+         */
+        $types = array_map(
+            fn ($capability): string => $capability->serviceType(),
+            array_values($this->capabilities->all()),
+        );
+
         return response()->json(DidDocument::for(
             $identity,
             (string) config('streetmesh.origin', 'https://'.config('streetmesh.host')),
-            config('streetmesh.venue') ? 'StreetMeshVenue' : 'AtprotoPersonalDataServer',
+            $types === [] ? 'AtprotoPersonalDataServer' : $types,
         ));
     }
 

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 use StreetMesh\Protocol\Handle;
 use StreetMesh\Protocol\Laravel\Attestations\Attestations;
+use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Console\CheckIdentity;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
@@ -58,6 +59,8 @@ class ProtocolServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(DidResolver::class);
+
+        $this->app->singleton(Capabilities::class);
 
         $this->app->singleton(Identities::class, fn (): Identities => new Identities(
             host: (string) config('streetmesh.host', 'localhost'),
