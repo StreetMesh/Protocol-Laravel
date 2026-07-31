@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 use StreetMesh\Protocol\Handle;
 use StreetMesh\Protocol\Laravel\Attestations\Attestations;
+use StreetMesh\Protocol\Laravel\Console\CheckIdentity;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
@@ -78,6 +79,10 @@ class ProtocolServiceProvider extends ServiceProvider
         $this->app['router']->middlewareGroup('streetmesh', ['throttle:120,1']);
 
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([CheckIdentity::class]);
+        }
 
         $this->publishes([
             __DIR__.'/../config/streetmesh.php' => config_path('streetmesh.php'),
