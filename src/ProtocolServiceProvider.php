@@ -6,7 +6,6 @@ use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
-use StreetMesh\Protocol\FlatTree;
 use StreetMesh\Protocol\Handle;
 use StreetMesh\Protocol\Laravel\Attestations\Attestations;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
@@ -14,6 +13,7 @@ use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Records\Collections;
 use StreetMesh\Protocol\Laravel\Records\CommitLog;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
+use StreetMesh\Protocol\MerkleSearchTree;
 use StreetMesh\Protocol\Network;
 use StreetMesh\Protocol\PlcDirectory;
 use StreetMesh\Protocol\RecordTree;
@@ -36,12 +36,15 @@ class ProtocolServiceProvider extends ServiceProvider
         $this->app->singleton(RecordStore::class);
 
         /*
-         * FlatTree is sound and not interoperable — it proves a signer committed
-         * to exactly the records held, and a stranger's software cannot
-         * recompute it. Bound here rather than hard-wired so that adopting the
-         * interoperable tree is a change of one line.
+         * The tree other people's software reads. A stranger holding the same
+         * records computes the same root, so a commit is a claim anybody can
+         * check rather than one only this server can.
+         *
+         * Bound rather than hard-wired because it was FlatTree until this line
+         * changed, and because a server with reason to prefer something else
+         * should not have to fork the package to say so.
          */
-        $this->app->singleton(RecordTree::class, FlatTree::class);
+        $this->app->singleton(RecordTree::class, MerkleSearchTree::class);
         $this->app->singleton(CommitLog::class);
 
         $this->app->singleton(PlcDirectory::class, fn ($app): PlcDirectory => new PlcDirectory(

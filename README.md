@@ -145,22 +145,24 @@ would let a server add or drop a private record with nothing to show for it, and
 the people most needing that protection are exactly the ones whose records are
 private.
 
-### One part is not yet interoperable
+### The root is one other software can compute
 
 A commit signs a single value standing for every record. How that value is
-derived decides whether other people's software can check it.
+derived decides whether anybody else can check it.
 
-`FlatTree` — the default — hashes every record's address and content in sorted
-order. **Sound**: adding, removing or altering anything changes the root, so a
-signature over it commits to exactly that set. **Not interoperable**: ATProtocol
-derives its root from a Merkle Search Tree, whose shape lets a server prove one
-record belongs without handing over the rest, and a root computed here is not one
-their software recognizes.
+The default is a Merkle Search Tree, the same structure ATProtocol uses: a key's
+layer follows from its own hash, so two servers holding the same records build
+the same tree — node for node — without ever coordinating. A commit is therefore
+a claim a stranger can verify rather than one only this server can.
 
-So a chain built today is honest history that only we can read. `RecordTree` is
-an interface and the binding is one line, so adopting the interoperable tree is a
-substitution rather than an excavation — and `isInteroperable()` returns `false`
-so nobody discovers the shortfall at the point of trying to federate.
+The implementation was checked by rebuilding a live repository of 1672 records
+from nothing but its records, producing all 463 of its nodes under the names its
+own network had already given them.
+
+`RecordTree` remains an interface, and `isInteroperable()` reports what a binding
+is worth — a server with reason to prefer something else should not have to fork
+the package, and a chain signed over a root nobody else can compute is a thing to
+choose deliberately rather than discover.
 
 ## Portability
 

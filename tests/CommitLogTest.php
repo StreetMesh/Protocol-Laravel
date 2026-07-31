@@ -9,6 +9,7 @@ use StreetMesh\Protocol\Laravel\Records\CommitLog;
 use StreetMesh\Protocol\Laravel\Records\CommitRecord;
 use StreetMesh\Protocol\Laravel\Records\Record;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
+use StreetMesh\Protocol\RecordTree;
 use StreetMesh\Protocol\Tid;
 
 /**
@@ -210,5 +211,19 @@ class CommitLogTest extends TestCase
         $this->log()->verify('did:plc:bob', $bobsKey->publicKey());
 
         $this->assertNull($this->log()->head('did:plc:bob')->prev);
+    }
+
+    /**
+     * A commit is only worth what its root is worth. Bound to a tree a stranger
+     * cannot recompute, a chain is honest history nobody else can read — which
+     * is a thing to notice deliberately rather than to discover while trying to
+     * federate.
+     */
+    public function test_the_bound_tree_is_one_other_software_can_read(): void
+    {
+        $this->assertTrue(
+            $this->app->make(RecordTree::class)->isInteroperable(),
+            'commits are being signed over a root no other implementation can compute',
+        );
     }
 }
