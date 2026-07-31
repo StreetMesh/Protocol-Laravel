@@ -111,6 +111,57 @@ current when it was signed. Returning a bare key would make those two
 indistinguishable at the call site, which is precisely where the difference
 matters.
 
+## History
+
+A record proves only that it has not changed since it was named. The commit log
+is what proves somebody agreed to it, and that the set held is the set they
+agreed to.
+
+```php
+use StreetMesh\Protocol\Laravel\Records\CommitLog;
+
+app(CommitLog::class)->commit($did, $signingKey);   // after writing
+app(CommitLog::class)->verify($did, $publicKey);    // three checks, all must hold
+```
+
+Verification asks three things: is every commit signed by them, does each name
+the one before it, and does the head still describe the records actually here. A
+record added or removed without committing to it fails the third.
+
+### What this does not do
+
+**It does not stop a server lying about its residents.** The signing key is held
+by the server somebody lives on, so a dishonest one can sign as them — and no
+signature scheme can take that away.
+
+What it does is make lying leave a mark. Every commit names the one before it by
+its content, so a rewritten past produces a link that does not fit, and anybody
+who saw the earlier link can show the two histories disagree. Detection rather
+than prevention, which is the same guarantee ATProtocol offers and for the same
+reason.
+
+Private records are committed to as well. Committing only to the public ones
+would let a server add or drop a private record with nothing to show for it, and
+the people most needing that protection are exactly the ones whose records are
+private.
+
+### One part is not yet interoperable
+
+A commit signs a single value standing for every record. How that value is
+derived decides whether other people's software can check it.
+
+`FlatTree` — the default — hashes every record's address and content in sorted
+order. **Sound**: adding, removing or altering anything changes the root, so a
+signature over it commits to exactly that set. **Not interoperable**: ATProtocol
+derives its root from a Merkle Search Tree, whose shape lets a server prove one
+record belongs without handing over the rest, and a root computed here is not one
+their software recognizes.
+
+So a chain built today is honest history that only we can read. `RecordTree` is
+an interface and the binding is one line, so adopting the interoperable tree is a
+substitution rather than an excavation — and `isInteroperable()` returns `false`
+so nobody discovers the shortfall at the point of trying to federate.
+
 ## Portability
 
 `RecordStore::exportFor()` returns everything of somebody's, in order. A person
