@@ -57,25 +57,57 @@ final class Capabilities
     }
 
     /**
-     * Where somebody arriving at the front door should be sent.
+     * What a stranger sees at the root.
      *
-     * Configured rather than inferred. A server that is both a home and a
-     * gathering place cannot have both as its front page, and guessing would
-     * mean the answer changed when a package was installed.
+     * Configured rather than inferred, because a server has one root and
+     * guessing would mean the answer changed when a package was installed.
+     * Falls back to whatever offers one, so a server with a single capability
+     * needs no configuration at all.
      */
-    public function homeRoute(?string $preferred = null): ?string
+    public function frontPage(?string $preferred = null): ?string
     {
         if ($preferred !== null && $this->has($preferred)) {
-            return $this->get($preferred)->home();
+            return $this->get($preferred)->frontPage();
         }
 
         foreach ($this->registered as $capability) {
-            if ($capability->home() !== null) {
-                return $capability->home();
+            if ($capability->frontPage() !== null) {
+                return $capability->frontPage();
             }
         }
 
         return null;
+    }
+
+    /**
+     * Every panel on offer, optionally narrowed and ordered by the operator.
+     *
+     * An arrangement naming a widget nothing provides is skipped rather than
+     * fatal: capabilities are installed and removed, and a server should not
+     * fail to render a page because a package it no longer has is still listed
+     * in a configuration file.
+     *
+     * @param  array<int, string>|null  $arrangement  widget names, in order
+     * @return array<int, Widget>
+     */
+    public function widgets(?array $arrangement = null): array
+    {
+        $offered = [];
+
+        foreach ($this->registered as $capability) {
+            foreach ($capability->widgets() as $widget) {
+                $offered[$widget->name()] = $widget;
+            }
+        }
+
+        if ($arrangement === null) {
+            return array_values($offered);
+        }
+
+        return array_values(array_filter(array_map(
+            fn (string $name): ?Widget => $offered[$name] ?? null,
+            $arrangement,
+        )));
     }
 
     /**

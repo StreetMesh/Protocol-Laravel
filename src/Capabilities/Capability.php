@@ -30,13 +30,23 @@ interface Capability
     public function serviceType(): string;
 
     /**
-     * Where a person starts, if the application sends them here.
+     * What a stranger sees if the server puts this capability at its root.
      *
-     * A route name rather than a path, because the path is the application's
-     * business and a capability that hard-coded one would be claiming ground it
-     * does not own.
+     * A view rather than a route, because there is only one root and only the
+     * application can say which capability gets it. Null means this capability
+     * has nothing to say to somebody who has not arrived yet.
      */
-    public function home(): ?string;
+    public function frontPage(): ?string;
+
+    /**
+     * Panels this capability offers for a signed-in person's home page.
+     *
+     * Offered rather than placed. The home page is the one surface where two
+     * installed capabilities genuinely overlap, and the operator arranges it.
+     *
+     * @return array<int, Widget>
+     */
+    public function widgets(): array;
 
     /**
      * What this capability contributes to a shell it does not control.
