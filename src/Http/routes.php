@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use StreetMesh\Protocol\Laravel\Http\ClientController;
 use StreetMesh\Protocol\Laravel\Http\IdentityController;
 
 /*
@@ -16,6 +17,20 @@ Route::middleware('streetmesh')->group(function (): void {
 
     Route::get('.well-known/atproto-did', [IdentityController::class, 'handle'])
         ->name('streetmesh.handle');
+
+    /*
+     * How this server introduces itself when it is the one asking.
+     *
+     * Not under .well-known, because its URL is not a convention to be looked
+     * up — it *is* this venue's identifier, and it travels inside every request
+     * for permission. A domicile fetches it because it was handed the address,
+     * not because it knows where to look.
+     */
+    Route::get('client-metadata.json', [ClientController::class, 'metadata'])
+        ->name('streetmesh.client');
+
+    Route::get('jwks.json', [ClientController::class, 'keys'])
+        ->name('streetmesh.jwks');
 });
 
 /*

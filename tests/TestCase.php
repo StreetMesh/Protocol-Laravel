@@ -21,6 +21,19 @@ abstract class TestCase extends Orchestra
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('database.default', 'testing');
         $app['config']->set('streetmesh.host', 'games.test');
+
+        /*
+         * Testbench answers on http://localhost, and this package refuses to
+         * publish a document naming anything reachable in the clear. That rule
+         * is not relaxed for tests: a real deployment is served over TLS — Herd
+         * provides it locally, and anywhere worth deploying to provides it in
+         * production — so a test environment on plain http would be exercising
+         * a situation that never occurs while hiding the check that matters.
+         */
+        $app['config']->set('app.url', 'https://games.test');
+        $app['url']->forceRootUrl('https://games.test');
+        $app['url']->forceScheme('https');
+
         $app['config']->set('streetmesh.collections', [
             'com.streetmesh.games.chess' => Record::PUBLIC,
             'com.streetmesh.messages.direct' => Record::PRIVATE,
