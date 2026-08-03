@@ -6,7 +6,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
 use StreetMesh\Protocol\AtUri;
+use StreetMesh\Protocol\Did;
 use StreetMesh\Protocol\Dpop;
+use StreetMesh\Protocol\Laravel\Attestations\Attestations;
+use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Permissions\Permission;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
@@ -31,6 +34,8 @@ final class RepoController
     public function __construct(
         private readonly Permissions $permissions,
         private readonly RecordStore $records,
+        private readonly Attestations $attestations,
+        private readonly DidResolver $resolver,
     ) {}
 
     public function create(Request $request): JsonResponse
@@ -69,6 +74,36 @@ final class RepoController
         }
 
         /*
+         * Anything written on somebody's behalf has to be signed by whoever is
+         * writing it. That is the whole difference between a record they hold
+         * and a record they merely received: a received one is worth what the
+         * sender's continued existence is worth, and a signed one can be
+         * checked by a stranger years after the venue has shut down.
+         *
+         * So the fields are taken from inside the signature rather than from
+         * beside it. A venue cannot send readable values that differ from what
+         * it signed, because the readable values are not read.
+         */
+        try {
+            $attested = $this->attestations->verify((string) ($value['attestation'] ?? ''));
+        } catch (Throwable $refused) {
+            return response()->json([
+                'error' => 'invalid_request',
+                'message' => 'A record written on somebody\'s behalf must carry a signature this server '
+                    .'can check: '.$refused->getMessage(),
+            ], 400);
+        }
+
+        if (! $this->answersTo($attested->issuer, $permission->client_id)) {
+            return response()->json([
+                'error' => 'invalid_request',
+                'message' => "That statement was signed by [{$attested->issuer}], which is not the client writing it.",
+            ], 400);
+        }
+
+        $value = $attested->toRecord();
+
+        /*
          * Written into the granting resident's own store, and nowhere else. The
          * request does not get to name whose records these are: that was
          * decided when somebody approved this, and letting a parameter override
@@ -93,6 +128,41 @@ final class RepoController
             'uri' => (string) AtUri::make($record->did, $record->collection, $record->rkey),
             'cid' => $record->cid,
         ], 201);
+    }
+
+    /**
+     * Is the identity that signed this the same party the resident let in?
+     *
+     * Without this a venue with permission to add records could relay somebody
+     * else's genuine signed statement into a resident's store — not a forgery,
+     * since it verifies, but not something that resident agreed to receive
+     * either.
+     *
+     * The client is named by a URL and the signer by a DID, so the tie is the
+     * host: `did:web:games.test` is that host by construction, and any other
+     * method has to claim the host in its document. That is the same
+     * bidirectional rule handles use, applied to the one link that matters
+     * here.
+     */
+    private function answersTo(string $issuer, string $clientId): bool
+    {
+        $host = parse_url($clientId, PHP_URL_HOST);
+
+        if (! is_string($host)) {
+            return false;
+        }
+
+        if ($issuer === (string) Did::forHost($host)) {
+            return true;
+        }
+
+        try {
+            $document = $this->resolver->document($issuer);
+        } catch (Throwable) {
+            return false;
+        }
+
+        return in_array('at://'.$host, (array) ($document['alsoKnownAs'] ?? []), strict: true);
     }
 
     /**

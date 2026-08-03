@@ -5,9 +5,9 @@ namespace StreetMesh\Protocol\Laravel\Attestations;
 use DateTimeImmutable;
 use DateTimeInterface;
 use RuntimeException;
-use StreetMesh\Protocol\Ed25519;
 use StreetMesh\Protocol\Jws;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
+use StreetMesh\Protocol\SigningKey;
 use Throwable;
 
 /**
@@ -25,10 +25,16 @@ final class Attestations
     /**
      * Sign a statement as this server.
      *
+     * Takes a `SigningKey` rather than a particular curve, and that is not
+     * tidying: it took an `Ed25519`, while every identity this package mints is
+     * P-256 because `did:plc` will not accept Ed25519 at all. So this method
+     * could not be called with the key of the server it belonged to, which is
+     * why nothing ever called it.
+     *
      * @param  array<string, mixed>  $claims
      * @param  string  $keyId  a verification method in this server's DID document
      */
-    public function issue(array $claims, Ed25519 $key, string $keyId): string
+    public function issue(array $claims, SigningKey $key, string $keyId): string
     {
         return Jws::sign($claims, $key, $keyId);
     }

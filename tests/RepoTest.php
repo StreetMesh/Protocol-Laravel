@@ -8,6 +8,7 @@ use StreetMesh\Protocol\ClientAssertion;
 use StreetMesh\Protocol\ClientMetadata;
 use StreetMesh\Protocol\Dpop;
 use StreetMesh\Protocol\Jwk;
+use StreetMesh\Protocol\Laravel\Attestations\Attestations;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
 use StreetMesh\Protocol\Laravel\Permissions\Spent;
 use StreetMesh\Protocol\Laravel\Records\Record;
@@ -31,9 +32,13 @@ class RepoTest extends TestCase
 
     private const ALICE = 'did:plc:alice';
 
+    private const VENUE_DID = 'did:web:games.test';
+
     private P256 $venueKey;
 
     private P256 $sessionKey;
+
+    private FakeNetwork $network;
 
     private string $token;
 
@@ -44,7 +49,7 @@ class RepoTest extends TestCase
         $this->venueKey = P256::generate();
         $this->sessionKey = P256::generate();
 
-        $network = (new FakeNetwork)
+        $this->network = (new FakeNetwork)
             ->serve(self::VENUE, [
                 'client_id' => self::VENUE,
                 'redirect_uris' => ['https://games.test/visit/callback'],
@@ -52,9 +57,23 @@ class RepoTest extends TestCase
             ])
             ->serve('https://games.test/jwks.json', ClientMetadata::keySet([
                 'atproto' => Jwk::forP256($this->venueKey),
-            ]));
+            ]))
+            /*
+             * The venue's identity, which is a different thing from its OAuth
+             * client keys: this is what it signs *statements* with, and what a
+             * stranger resolves years later to check one.
+             */
+            ->serve('https://games.test/.well-known/did.json', [
+                'id' => self::VENUE_DID,
+                'verificationMethod' => [[
+                    'id' => self::VENUE_DID.'#atproto',
+                    'type' => 'Multikey',
+                    'controller' => self::VENUE_DID,
+                    'publicKeyMultibase' => $this->venueKey->multikey(),
+                ]],
+            ]);
 
-        $this->app->instance(Network::class, $network);
+        $this->app->instance(Network::class, $this->network);
 
         $this->token = $this->grant('atproto '.Scope::forRepo([self::CHESS], [Scope::CREATE]));
     }
@@ -90,6 +109,21 @@ class RepoTest extends TestCase
     }
 
     /**
+     * What a venue signs, as it would sign it.
+     *
+     * @param  array<string, mixed>  $claims
+     * @return array<string, mixed>
+     */
+    private function attested(array $claims, ?P256 $signedWith = null): array
+    {
+        return ['attestation' => $this->app->make(Attestations::class)->issue(
+            $claims,
+            $signedWith ?? $this->venueKey,
+            self::VENUE_DID.'#atproto',
+        )];
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      * @return TestResponse<JsonResponse>
      */
@@ -109,7 +143,7 @@ class RepoTest extends TestCase
     {
         $response = $this->write([
             'collection' => self::CHESS,
-            'record' => ['result' => 'win', 'seat' => 'white', 'pgn' => ''],
+            'record' => $this->attested(['result' => 'win', 'seat' => 'white', 'pgn' => '']),
         ]);
 
         $response->assertCreated();
@@ -132,10 +166,98 @@ class RepoTest extends TestCase
     {
         $this->write([
             'collection' => self::CHESS,
-            'record' => ['result' => 'win', 'pgn' => ''],
+            'record' => $this->attested(['result' => 'win', 'pgn' => '']),
         ])->assertCreated();
 
         $this->assertSame('', Record::query()->firstOrFail()->value['pgn']);
+    }
+
+    /**
+     * The record keeps the signature, not only what it said.
+     *
+     * This is the difference between a record somebody holds and a record they
+     * merely received. The decoded fields are a convenience; the compact form
+     * is the part a stranger can check years from now, against a key the venue
+     * published, whether or not the venue still exists.
+     */
+    public function test_the_record_carries_the_signature_that_can_be_checked_later(): void
+    {
+        $this->write([
+            'collection' => self::CHESS,
+            'record' => $this->attested(['result' => 'win']),
+        ])->assertCreated();
+
+        $stored = Record::query()->firstOrFail()->value;
+
+        $this->assertSame(self::VENUE_DID, $stored['issuer']);
+        $this->assertArrayHasKey('receivedAt', $stored);
+
+        // And it still verifies on its own, with nothing but the document.
+        $checked = $this->app->make(Attestations::class)->verify($stored['attestation']);
+
+        $this->assertSame('win', $checked->claim('result'));
+        $this->assertSame(self::VENUE_DID, $checked->issuer);
+    }
+
+    /**
+     * An unsigned record is worth what the sender's continued existence is
+     * worth, which is the thing this project exists not to accept.
+     */
+    public function test_a_record_with_no_signature_is_refused(): void
+    {
+        $this->write([
+            'collection' => self::CHESS,
+            'record' => ['result' => 'win'],
+        ])->assertStatus(400);
+
+        $this->assertSame(0, Record::query()->count());
+    }
+
+    /**
+     * Signed by a key the venue does not publish, which is what a forgery looks
+     * like from here.
+     */
+    public function test_a_record_signed_by_a_key_the_venue_does_not_publish_is_refused(): void
+    {
+        $this->write([
+            'collection' => self::CHESS,
+            'record' => $this->attested(['result' => 'win'], signedWith: P256::generate()),
+        ])->assertStatus(400);
+
+        $this->assertSame(0, Record::query()->count());
+    }
+
+    /**
+     * Genuine, and still not this venue's to deliver.
+     *
+     * A venue with permission to add records could otherwise relay somebody
+     * else's real signed statement into a resident's store — not a forgery,
+     * since it verifies, but not what that resident agreed to receive either.
+     */
+    public function test_a_statement_signed_by_somebody_else_is_refused(): void
+    {
+        $stranger = P256::generate();
+        $strangerDid = 'did:web:elsewhere.test';
+
+        $this->network->serve('https://elsewhere.test/.well-known/did.json', [
+            'id' => $strangerDid,
+            'verificationMethod' => [[
+                'id' => $strangerDid.'#atproto',
+                'type' => 'Multikey',
+                'controller' => $strangerDid,
+                'publicKeyMultibase' => $stranger->multikey(),
+            ]],
+        ]);
+
+        $relayed = ['attestation' => $this->app->make(Attestations::class)->issue(
+            ['result' => 'win'],
+            $stranger,
+            $strangerDid.'#atproto',
+        )];
+
+        $this->write(['collection' => self::CHESS, 'record' => $relayed])->assertStatus(400);
+
+        $this->assertSame(0, Record::query()->count());
     }
 
     /**
@@ -146,7 +268,7 @@ class RepoTest extends TestCase
     {
         $this->write([
             'collection' => 'com.streetmesh.messages.direct',
-            'record' => ['body' => 'hello'],
+            'record' => $this->attested(['body' => 'hello']),
         ])->assertForbidden()->assertJsonPath('error', 'insufficient_scope');
 
         $this->assertSame(0, Record::query()->count());
@@ -174,7 +296,7 @@ class RepoTest extends TestCase
      */
     public function test_a_token_presented_by_another_key_is_refused(): void
     {
-        $this->write(['collection' => self::CHESS, 'record' => ['result' => 'win']], key: P256::generate())
+        $this->write(['collection' => self::CHESS, 'record' => $this->attested(['result' => 'win'])], key: P256::generate())
             ->assertUnauthorized();
 
         $this->assertSame(0, Record::query()->count());
@@ -184,7 +306,7 @@ class RepoTest extends TestCase
     {
         $url = url('/xrpc/com.atproto.repo.createRecord');
 
-        $this->postJson($url, ['collection' => self::CHESS, 'record' => ['result' => 'win']], [
+        $this->postJson($url, ['collection' => self::CHESS, 'record' => $this->attested(['result' => 'win'])], [
             'Authorization' => 'DPoP '.$this->token,
         ])->assertUnauthorized();
     }
@@ -197,7 +319,7 @@ class RepoTest extends TestCase
     {
         $url = url('/xrpc/com.atproto.repo.createRecord');
 
-        $this->postJson($url, ['collection' => self::CHESS, 'record' => ['result' => 'win']], [
+        $this->postJson($url, ['collection' => self::CHESS, 'record' => $this->attested(['result' => 'win'])], [
             'Authorization' => 'DPoP '.$this->token,
             'DPoP' => Dpop::proof($this->sessionKey, 'POST', $url, accessToken: 'some-other-token'),
         ])->assertUnauthorized();
@@ -207,7 +329,7 @@ class RepoTest extends TestCase
     {
         $this->postJson(url('/xrpc/com.atproto.repo.createRecord'), [
             'collection' => self::CHESS,
-            'record' => ['result' => 'win'],
+            'record' => $this->attested(['result' => 'win']),
         ])->assertUnauthorized();
 
         $this->assertSame(0, Record::query()->count());
@@ -221,13 +343,13 @@ class RepoTest extends TestCase
     {
         $permissions = $this->app->make(Permissions::class);
 
-        $this->write(['collection' => self::CHESS, 'record' => ['result' => 'win']])->assertCreated();
+        $this->write(['collection' => self::CHESS, 'record' => $this->attested(['result' => 'win'])])->assertCreated();
 
         $permissions->withdraw(
             $permissions->holder($this->token, Jwk::forP256($this->sessionKey)->thumbprint())
         );
 
-        $this->write(['collection' => self::CHESS, 'record' => ['result' => 'win']])->assertUnauthorized();
+        $this->write(['collection' => self::CHESS, 'record' => $this->attested(['result' => 'win'])])->assertUnauthorized();
 
         $this->assertSame(1, Record::query()->count(), 'only the one written while it was allowed');
     }
