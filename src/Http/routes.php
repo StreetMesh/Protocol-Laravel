@@ -6,6 +6,7 @@ use StreetMesh\Protocol\Laravel\Http\ConsentController;
 use StreetMesh\Protocol\Laravel\Http\IdentityController;
 use StreetMesh\Protocol\Laravel\Http\PermissionController;
 use StreetMesh\Protocol\Laravel\Http\PermissionMetadataController;
+use StreetMesh\Protocol\Laravel\Http\RepoController;
 
 /*
  * Everything a stranger may ask without introducing themselves.
@@ -58,6 +59,18 @@ Route::middleware('streetmesh')->group(function (): void {
 
     Route::post('oauth/token', [PermissionController::class, 'token'])
         ->name('streetmesh.oauth.token');
+
+    /*
+     * And what all of it was for: somebody else writing a record into a
+     * resident's own store, with permission that resident gave.
+     *
+     * Under `xrpc/` and named as ATProtocol names it, because this is their
+     * method rather than one of ours — a client that already knows how to write
+     * a record to a PDS should not have to learn a second way to write one
+     * here.
+     */
+    Route::post('xrpc/com.atproto.repo.createRecord', [RepoController::class, 'create'])
+        ->name('streetmesh.repo.create');
 });
 
 /*
