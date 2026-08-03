@@ -13,6 +13,7 @@ use StreetMesh\Protocol\Laravel\Console\CheckIdentity;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
+use StreetMesh\Protocol\Laravel\Permissions\Delegations;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
 use StreetMesh\Protocol\Laravel\Permissions\Spent;
 use StreetMesh\Protocol\Laravel\Records\Collections;
@@ -72,6 +73,7 @@ class ProtocolServiceProvider extends ServiceProvider
 
         $this->app->singleton(Spent::class);
         $this->app->singleton(Permissions::class);
+        $this->app->singleton(Delegations::class);
     }
 
     public function boot(): void
