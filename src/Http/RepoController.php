@@ -74,7 +74,20 @@ final class RepoController
          * decided when somebody approved this, and letting a parameter override
          * it would let one person's permission write into another's store.
          */
-        $record = $this->records->put((string) $permission->did, $collection, $value);
+        try {
+            $record = $this->records->put((string) $permission->did, $collection, $value);
+        } catch (Throwable $refused) {
+            /*
+             * Most likely a collection this server has not declared. That is a
+             * refusal rather than a fault — the caller asked for something this
+             * domicile does not keep — and answering 500 would tell them to try
+             * again later for a request that will never work.
+             */
+            return response()->json([
+                'error' => 'invalid_request',
+                'message' => $refused->getMessage(),
+            ], 400);
+        }
 
         return response()->json([
             'uri' => (string) AtUri::make($record->did, $record->collection, $record->rkey),
