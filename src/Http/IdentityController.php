@@ -43,7 +43,21 @@ class IdentityController
 
         return response()->json(DidDocument::for(
             $identity,
-            (string) config('streetmesh.origin', 'https://'.config('streetmesh.host')),
+
+            /*
+             * `??` rather than config()'s default, which applies only when a
+             * key is absent — and both of these are present and null whenever
+             * their environment variables are unset, which is the ordinary
+             * case. So the default was never reached, and this published
+             * `https://` with no host after it: every venue walking the chain
+             * to this server found nothing at the end of it.
+             *
+             * The identity's own handle is the last resort, because a server
+             * that knows what it is called can say so even when nobody has
+             * configured it.
+             */
+            (string) (config('streetmesh.origin') ?? 'https://'.(config('streetmesh.host') ?? $identity->handle)),
+
             $types === [] ? 'AtprotoPersonalDataServer' : $types,
         ));
     }

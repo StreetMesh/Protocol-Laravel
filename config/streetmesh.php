@@ -4,6 +4,34 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | Who this server is
+     |--------------------------------------------------------------------------
+     |
+     | The name strangers reach this server by. Under `did:web` it decides the
+     | server's own identifier, so it has to be the real one rather than a local
+     | alias — and it is read when an identity is first made, so changing it
+     | afterwards renames nothing that already exists.
+     |
+     | `origin` is the same server as a full address, and is what this server
+     | publishes in its DID document as the place to reach it. Derived from the
+     | host when it is not set, which is right for every server that serves
+     | itself on https and its own name.
+     |
+     */
+
+    'host' => env('STREETMESH_HOST'),
+
+    'origin' => env('STREETMESH_ORIGIN'),
+
+    /*
+     | P-256 unless something is very unusual. `did:plc` permits only secp256k1
+     | and P-256, and P-256 is the one PHP handles without an extension.
+     */
+
+    'curve' => env('STREETMESH_CURVE', 'p256'),
+
+    /*
+     |--------------------------------------------------------------------------
      | The front page
      |--------------------------------------------------------------------------
      |

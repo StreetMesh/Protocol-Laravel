@@ -124,6 +124,28 @@ class IdentityTest extends TestCase
         $this->assertContains('at://games.test', $document['alsoKnownAs']);
     }
 
+    /**
+     * The end of the chain anybody walks to reach this server.
+     *
+     * Never asserted before, and so it published `https://` with no host after
+     * it for as long as it existed — a document that resolved perfectly and led
+     * nowhere. Every hop of discovery worked; the last one was empty.
+     */
+    public function test_the_document_says_where_to_actually_reach_this_server(): void
+    {
+        $document = $this->get('/.well-known/did.json')->assertOk()->json();
+
+        $this->assertNotEmpty($document['service']);
+
+        foreach ($document['service'] as $service) {
+            $this->assertSame(
+                'https://games.test',
+                $service['serviceEndpoint'],
+                'a service endpoint with no host is a document that leads nowhere',
+            );
+        }
+    }
+
     public function test_a_stranger_can_resolve_the_name_back_to_the_identity(): void
     {
         $identity = $this->identities()->forServer();
