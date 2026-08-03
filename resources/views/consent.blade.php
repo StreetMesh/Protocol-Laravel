@@ -34,8 +34,8 @@
             <p>{{ __('It is asking to:') }}</p>
 
             <ul>
-                @foreach ($scopes as $scope)
-                    <li>{{ __('streetmesh::permission.'.$scope) }}</li>
+                @foreach ($asking as $sentence)
+                    <li>{{ $sentence }}</li>
                 @endforeach
             </ul>
 

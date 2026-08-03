@@ -5,24 +5,36 @@ namespace StreetMesh\Protocol\Laravel\Records;
 use InvalidArgumentException;
 
 /**
- * Which kinds of record this server knows about, and who may see each.
+ * Which kinds of record this server publishes, and what becomes of the rest.
  *
  * Visibility belongs to the kind of record, not to the record. A chess result is
  * public because chess results are public; a message is private because messages
  * are private. Deciding it per record would mean there is an input somewhere
- * that says whether this one is private, and an input is something that can be
- * wrong, forged, or flipped by a bug in a form.
+ * saying whether this one is private, and an input can be wrong, forged, or
+ * flipped by a bug in a form. So there is no such input, here or anywhere.
  *
- * So there is no such input. A record's visibility is looked up from its
- * collection at the moment it is written, and a collection nobody has declared
- * cannot be written to at all. That last part is deliberate friction: adding a
- * kind of record to a server should be a decision somebody makes once, in
- * configuration, rather than a consequence of a typo in a collection name.
+ * A collection nobody has declared is **private**, not refused — a correction to
+ * a rule that was wrong in an instructive way.
  *
- * The asymmetry matters. Publishing cannot be undone — a record replicated out
- * of a public collection cannot be recalled — so the failure that must not
- * happen is a private thing becoming public, and the way to prevent it is to
- * make sure no code path takes visibility as an argument.
+ * Refusing was defended as protection against a typo: a mistyped collection name
+ * becoming a kind of record nobody meant to create. That holds for records this
+ * server writes itself, where a typo is our own bug. It does not hold for a
+ * record arriving from somewhere else, where the name is not ours to mistype and
+ * a resident approved it *by name* before anything could be written under it.
+ *
+ * And it had a cost that outweighed it. A domicile would have had to be
+ * configured for chess in advance in order to receive a chess result, so a venue
+ * could only settle records to servers whose operators had already heard of it.
+ * That is not federation — it is two operators agreeing privately, which is the
+ * arrangement this project exists to argue against.
+ *
+ * The asymmetry that actually mattered survives intact. Publishing cannot be
+ * undone — a record replicated out of a public collection cannot be recalled —
+ * so the failure that must never happen is a private thing becoming public.
+ * Defaulting to private cannot cause it. Defaulting to public would.
+ *
+ * So this list means "what this server publishes" rather than "what this server
+ * will accept", which is a more honest thing for an operator to be deciding.
  */
 final class Collections
 {
@@ -38,10 +50,12 @@ final class Collections
 
     public function visibilityOf(string $collection): string
     {
-        $visibility = $this->declared[$collection] ?? throw new InvalidArgumentException(
-            "This server has not declared the collection [{$collection}]. Declare it in config/streetmesh.php "
-            .'with the visibility its records should have, which is a decision rather than a default.'
-        );
+        /*
+         * Undeclared means private. A server can hold a kind of record it has
+         * never been told about — somebody who lives here agreed to it — and
+         * holding it is not the same as publishing it.
+         */
+        $visibility = $this->declared[$collection] ?? Record::PRIVATE;
 
         return match ($visibility) {
             Record::PUBLIC, Record::PRIVATE => $visibility,

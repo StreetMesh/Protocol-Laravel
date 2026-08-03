@@ -8,6 +8,7 @@ use ReflectionMethod;
 use RuntimeException;
 use StreetMesh\Protocol\AtUri;
 use StreetMesh\Protocol\Cid;
+use StreetMesh\Protocol\Laravel\Records\Collections;
 use StreetMesh\Protocol\Laravel\Records\Record;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
 
@@ -132,13 +133,38 @@ class RecordStoreTest extends TestCase
         $this->assertCount(0, $this->store()->exportFor(self::ALICE));
     }
 
-    public function test_an_undeclared_collection_is_refused_rather_than_guessed(): void
+    /**
+     * A server can hold a kind of record it has never been told about, because
+     * a venue it has never heard of may arrive with one a resident agreed to.
+     * Requiring it declared first would mean a venue could only settle records
+     * to operators who had already heard of it, which is not federation.
+     *
+     * Holding it privately is the whole safety of that: the failure which
+     * cannot be undone is a private thing becoming public, and nothing on this
+     * path can cause it.
+     */
+    public function test_a_collection_nobody_declared_is_held_privately_rather_than_refused(): void
+    {
+        $record = $this->store()->put(self::ALICE, 'com.example.something.new', ['result' => 'win']);
+
+        $this->assertSame(Record::PRIVATE, $record->visibility);
+
+        $this->assertCount(0, $this->store()->list(self::ALICE, 'com.example.something.new'));
+        $this->assertCount(1, $this->store()->list(self::ALICE, 'com.example.something.new', asStranger: false));
+
+        // And a stranger asking for everything gets none of it.
+        $this->assertCount(0, $this->store()->exportFor(self::ALICE));
+    }
+
+    /**
+     * The declared list decides what gets published, so nonsense in it is still
+     * a failure rather than something quietly treated as public.
+     */
+    public function test_a_collection_declared_as_nonsense_is_still_refused(): void
     {
         $this->expectException(InvalidArgumentException::class);
 
-        // A typo in a collection name must not create a new kind of record with
-        // a visibility nobody chose.
-        $this->store()->put(self::ALICE, 'com.streetmesh.games.chesss', ['result' => 'win']);
+        (new Collections(['com.example.thing' => 'sort-of-public']))->visibilityOf('com.example.thing');
     }
 
     public function test_a_record_knows_whether_it_still_says_what_it_said(): void

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Identity\Identity;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
+use StreetMesh\Protocol\Scope;
 
 /**
  * The one screen in this whole exchange that a person actually looks at.
@@ -42,7 +43,7 @@ final class ConsentController
              */
             'venue' => parse_url($permission->client_id, PHP_URL_HOST),
 
-            'scopes' => $permission->scopes(),
+            'asking' => $this->inWords($permission->scopes()),
         ]);
     }
 
@@ -77,6 +78,47 @@ final class ConsentController
              */
             'iss' => rtrim(url('/'), '/'),
         ]));
+    }
+
+    /**
+     * The scopes, as sentences somebody can act on.
+     *
+     * This carries more weight than it looks. A server no longer has to have
+     * been configured for a kind of record before it can hold one — a resident
+     * agreeing is what makes it allowed — so this screen is the only place a
+     * person sees the name of what is about to be written under. `repo:com.
+     * streetmesh.games.chess?action=create` is not something to decide from.
+     *
+     * The record type is shown as it is, though, rather than prettified away.
+     * Whoever is reading has to be able to recognize it later in their own
+     * records, and a friendly paraphrase they never see again would not help
+     * them do that.
+     *
+     * @param  array<int, string>  $scopes
+     * @return array<int, string>
+     */
+    private function inWords(array $scopes): array
+    {
+        $sentences = [];
+
+        foreach ($scopes as $scope) {
+            $repo = Scope::parse($scope);
+
+            if ($repo === null) {
+                // `atproto` and anything else that grants no access to records.
+                continue;
+            }
+
+            $what = in_array('*', $repo->collections, strict: true)
+                ? __('records of every kind')
+                : implode(__(' and '), $repo->collections);
+
+            $sentences[] = $repo->actions === [Scope::CREATE]
+                ? __('Add :what to your records, and never change or remove them', ['what' => $what])
+                : __('Add, change and remove :what in your records', ['what' => $what]);
+        }
+
+        return $sentences === [] ? [__('Confirm who you are, and nothing else')] : $sentences;
     }
 
     /**
