@@ -13,6 +13,8 @@ use StreetMesh\Protocol\Laravel\Console\CheckIdentity;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
+use StreetMesh\Protocol\Laravel\Permissions\Permissions;
+use StreetMesh\Protocol\Laravel\Permissions\Spent;
 use StreetMesh\Protocol\Laravel\Records\Collections;
 use StreetMesh\Protocol\Laravel\Records\CommitLog;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
@@ -67,6 +69,9 @@ class ProtocolServiceProvider extends ServiceProvider
             defaultCurve: (string) config('streetmesh.curve', 'p256'),
         ));
         $this->app->singleton(Attestations::class);
+
+        $this->app->singleton(Spent::class);
+        $this->app->singleton(Permissions::class);
     }
 
     public function boot(): void
@@ -82,6 +87,14 @@ class ProtocolServiceProvider extends ServiceProvider
         $this->app['router']->middlewareGroup('streetmesh', ['throttle:120,1']);
 
         $this->loadRoutesFrom(__DIR__.'/Http/routes.php');
+
+        /*
+         * The consent screen, and nothing else. Registered as a namespace so an
+         * interface package can put its own `consent` view in front of this
+         * one — what a resident sees is a domicile's business, and this is here
+         * only so a bare server can still ask somebody a question.
+         */
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'streetmesh');
 
         if ($this->app->runningInConsole()) {
             $this->commands([CheckIdentity::class]);

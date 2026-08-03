@@ -2,7 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use StreetMesh\Protocol\Laravel\Http\ClientController;
+use StreetMesh\Protocol\Laravel\Http\ConsentController;
 use StreetMesh\Protocol\Laravel\Http\IdentityController;
+use StreetMesh\Protocol\Laravel\Http\PermissionController;
+use StreetMesh\Protocol\Laravel\Http\PermissionMetadataController;
 
 /*
  * Everything a stranger may ask without introducing themselves.
@@ -31,6 +34,45 @@ Route::middleware('streetmesh')->group(function (): void {
 
     Route::get('jwks.json', [ClientController::class, 'keys'])
         ->name('streetmesh.jwks');
+
+    /*
+     * And how it answers when it is the one being asked.
+     *
+     * These two say what this server will do before anybody tries it, which is
+     * what lets a venue that has never heard of us decide whether we are worth
+     * talking to at all.
+     */
+    Route::get('.well-known/oauth-protected-resource', [PermissionMetadataController::class, 'resource'])
+        ->name('streetmesh.oauth.resource');
+
+    Route::get('.well-known/oauth-authorization-server', [PermissionMetadataController::class, 'server'])
+        ->name('streetmesh.oauth.server');
+
+    /*
+     * The two a venue posts to. No session and no CSRF token, for the same
+     * reason as everything else in this group: the caller is a server, and it
+     * authenticates by signing rather than by holding a cookie.
+     */
+    Route::post('oauth/par', [PermissionController::class, 'push'])
+        ->name('streetmesh.oauth.par');
+
+    Route::post('oauth/token', [PermissionController::class, 'token'])
+        ->name('streetmesh.oauth.token');
+});
+
+/*
+ * The one part of this a person sees, and so the one part that needs a browser.
+ *
+ * Inside the web group, and behind a login, because this is somebody deciding
+ * about their own records — the session is the whole point here rather than an
+ * obstacle, which is the opposite of every route above.
+ */
+Route::middleware(['web', 'auth'])->group(function (): void {
+    Route::get('oauth/authorize', [ConsentController::class, 'show'])
+        ->name('streetmesh.oauth.authorize');
+
+    Route::post('oauth/authorize', [ConsentController::class, 'approve'])
+        ->name('streetmesh.oauth.approve');
 });
 
 /*
