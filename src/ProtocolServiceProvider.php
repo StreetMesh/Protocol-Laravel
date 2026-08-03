@@ -16,6 +16,7 @@ use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Protocol\Laravel\Permissions\Delegations;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
 use StreetMesh\Protocol\Laravel\Permissions\Spent;
+use StreetMesh\Protocol\Laravel\Permissions\Tickets;
 use StreetMesh\Protocol\Laravel\Records\Collections;
 use StreetMesh\Protocol\Laravel\Records\CommitLog;
 use StreetMesh\Protocol\Laravel\Records\RecordStore;
@@ -73,6 +74,7 @@ class ProtocolServiceProvider extends ServiceProvider
 
         $this->app->singleton(Spent::class);
         $this->app->singleton(Permissions::class);
+        $this->app->singleton(Tickets::class);
         $this->app->singleton(Delegations::class);
     }
 
