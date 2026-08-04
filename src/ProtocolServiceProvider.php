@@ -56,6 +56,7 @@ class ProtocolServiceProvider extends ServiceProvider
 
         $this->app->singleton(PlcDirectory::class, fn ($app): PlcDirectory => new PlcDirectory(
             $app->make(Network::class),
+            (string) config('streetmesh.plc.directory', PlcDirectory::DEFAULT),
         ));
 
         $this->app->singleton(Handle::class, fn ($app): Handle => new Handle(
@@ -66,7 +67,8 @@ class ProtocolServiceProvider extends ServiceProvider
 
         $this->app->singleton(Capabilities::class);
 
-        $this->app->singleton(Identities::class, fn (): Identities => new Identities(
+        $this->app->singleton(Identities::class, fn ($app): Identities => new Identities(
+            directory: $app->make(PlcDirectory::class),
             host: (string) config('streetmesh.host', 'localhost'),
             defaultCurve: (string) config('streetmesh.curve', 'p256'),
         ));

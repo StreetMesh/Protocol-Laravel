@@ -87,6 +87,30 @@ return [
      |
      */
 
+    /*
+    |--------------------------------------------------------------------------
+    | The PLC directory
+    |--------------------------------------------------------------------------
+    |
+    | Where residents' identifiers are published. A `did:plc` is the hash of the
+    | operation that created it, so it says nothing about where its subject
+    | lives and survives them renaming or moving — which `did:web` cannot do,
+    | because a `did:web` *is* an address.
+    |
+    | What the directory is trusted for is narrow and worth being exact about:
+    | every operation is signed by a key the subject holds, so it can neither
+    | forge an identity nor reassign one. It can only decline to answer.
+    |
+    | Point this at a directory of your own while developing. Operations sent to
+    | the public one are permanent, and ones naming a `.test` host would be
+    | permanent litter.
+    |
+    */
+
+    'plc' => [
+        'directory' => env('STREETMESH_PLC_DIRECTORY', 'https://plc.directory'),
+    ],
+
     'oauth' => [
         'redirect_route' => 'venue.callback',
         'redirect' => env('STREETMESH_OAUTH_REDIRECT'),

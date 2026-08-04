@@ -6,6 +6,8 @@ use RuntimeException;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Protocol\Laravel\Identity\Identity;
 use StreetMesh\Protocol\Multikey;
+use StreetMesh\Protocol\Network;
+use StreetMesh\Protocol\PlcDirectory;
 use StreetMesh\Protocol\Signature;
 
 /**
@@ -13,6 +15,24 @@ use StreetMesh\Protocol\Signature;
  */
 class IdentityTest extends TestCase
 {
+    private FakeNetwork $network;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        /*
+         * Minting a resident publishes to a directory, so these tests reach the
+         * network where they used not to. The fake accepts and remembers, which
+         * is what lets a test ask whether something was actually published
+         * rather than only whether the code that publishes it ran.
+         */
+        $this->network = new FakeNetwork;
+        $this->app->instance(Network::class, $this->network);
+        $this->app->forgetInstance(PlcDirectory::class);
+        $this->app->forgetInstance(Identities::class);
+    }
+
     private function identities(): Identities
     {
         return $this->app->make(Identities::class);
@@ -66,6 +86,50 @@ class IdentityTest extends TestCase
     }
 
     /**
+     * A person is not a place.
+     *
+     * The server's own identity is `did:web` and is reasonably found where it
+     * lives. A resident's is not, because a resident may want a different name
+     * next year or a different server, and neither should cost them the records
+     * they have already signed. A `did:web` cannot survive either — a `did:web`
+     * *is* the address.
+     */
+    public function test_somebody_who_lives_here_gets_an_identifier_that_is_not_an_address(): void
+    {
+        ['identity' => $identity] = $this->identities()->forResident('alice.games.test');
+
+        $this->assertStringStartsWith('did:plc:', $identity->did);
+        $this->assertStringNotContainsString('alice.games.test', $identity->did);
+
+        // The server keeps the kind of identifier that says where it is.
+        $this->assertStringStartsWith('did:web:', $this->identities()->forServer()->did);
+    }
+
+    /**
+     * Published, not merely minted.
+     *
+     * A `did:plc` that was never submitted is a name nobody in the world can
+     * resolve — and it would look completely correct in this server's database.
+     */
+    public function test_the_identity_is_put_on_the_record_where_others_can_find_it(): void
+    {
+        ['identity' => $identity] = $this->identities()->forResident('alice.games.test');
+
+        $this->assertCount(1, $this->network->submitted);
+        $this->assertStringEndsWith($identity->did, $this->network->submitted[0]['url']);
+
+        $operation = json_decode($this->network->submitted[0]['body'], true);
+
+        $this->assertSame('plc_operation', $operation['type']);
+        $this->assertSame(['at://alice.games.test'], $operation['alsoKnownAs']);
+        $this->assertNotEmpty($operation['sig']);
+
+        // Theirs first, this server's second: the order is the order of
+        // authority, and it is what lets them overrule us.
+        $this->assertCount(2, $operation['rotationKeys']);
+    }
+
+    /**
      * The decision that makes "you can leave" true rather than a slogan.
      */
     public function test_a_resident_is_handed_the_key_that_lets_them_leave(): void
@@ -82,10 +146,23 @@ class IdentityTest extends TestCase
 
         $this->assertNotSame($identity->key()->multikey(), $rotation->multikey());
 
-        // And this server keeps no copy, so it cannot move them and cannot
-        // refuse to.
-        $this->assertNull($identity->rotation_key);
-        $this->assertFalse($identity->canBeMoved());
+        /*
+         * And it is *theirs*. This server holds a rotation key of its own — it
+         * has to, or it could never change their handle for them — but a
+         * different one, and lower in the order of authority. The distinction
+         * is the whole of "you can leave": PLC lets a higher key undo what a
+         * lower one did, so whatever this server does with its key, they can
+         * overrule with the one they are holding here.
+         *
+         * The same key in both places would make leaving something this server
+         * grants rather than something they do.
+         */
+        $this->assertNotNull($identity->rotation_key);
+        $this->assertNotSame(
+            $rotation->multikey(),
+            $identity->rotationKey()?->multikey(),
+            'the key they keep must not be the key this server keeps',
+        );
     }
 
     public function test_a_handle_is_taken_only_once(): void

@@ -51,17 +51,23 @@ final class FakeNetwork implements Network
     }
 
     /**
-     * Accepted without recording anything.
+     * Accepted, and remembered.
      *
-     * Nothing that resolves an identity writes, so no test here needs a
-     * submitted operation to go anywhere. A test that does should record it
-     * rather than widen this.
+     * Kept so a test can ask whether something was actually published rather
+     * than only whether the code that publishes it ran.
      *
+     * @var array<int, array{url: string, body: string}>
+     */
+    public array $submitted = [];
+
+    /**
      * @param  array<string, string>  $headers
      * @return array{status: int, body: string}
      */
     public function post(string $url, string $body, array $headers = []): array
     {
+        $this->submitted[] = ['url' => $url, 'body' => $body];
+
         return ['status' => 200, 'body' => ''];
     }
 }
