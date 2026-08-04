@@ -5,6 +5,7 @@ namespace StreetMesh\Protocol\Laravel\Tests;
 use Orchestra\Testbench\TestCase as Orchestra;
 use StreetMesh\Protocol\Laravel\ProtocolServiceProvider;
 use StreetMesh\Protocol\Laravel\Records\Record;
+use StreetMesh\Protocol\Network;
 
 abstract class TestCase extends Orchestra
 {
@@ -15,6 +16,16 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
+
+        /*
+         * Nothing here talks to the outside world.
+         *
+         * A default rather than something each test opts into, because the
+         * tests that reach the network by accident are exactly the ones that
+         * did not think they would. A test wanting particular answers binds its
+         * own.
+         */
+        $app->instance(Network::class, new OfflineNetwork);
         // Keys are encrypted at rest, so a server without an application key
         // cannot hold an identity at all. Worth failing loudly in tests rather
         // than discovering it on a first deploy.
