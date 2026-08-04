@@ -146,6 +146,46 @@ class IdentityTest extends TestCase
         }
     }
 
+    /**
+     * A resident's name is a name under this server's own, so both documents are
+     * served for more than one identity and the hostname is what tells them
+     * apart. Both answered with the server's identity regardless of who was
+     * asked for — so every resident handle resolved to the server, and a venue
+     * following one would have been handed the wrong identity entirely.
+     */
+    public function test_somebody_who_lives_here_resolves_to_their_own_identity(): void
+    {
+        $resident = $this->identities()->forResident('alice.games.test')['identity'];
+        $server = $this->identities()->forServer();
+
+        $this->assertNotSame($server->did, $resident->did);
+
+        $this->get('http://alice.games.test/.well-known/atproto-did')
+            ->assertOk()
+            ->assertSee($resident->did);
+
+        $document = $this->get('http://alice.games.test/.well-known/did.json')->assertOk()->json();
+
+        $this->assertSame($resident->did, $document['id']);
+        $this->assertContains('at://alice.games.test', $document['alsoKnownAs']);
+    }
+
+    /**
+     * A resident's repository is kept here. Their document has to say so, or a
+     * venue would follow their name to a server built out of their own name,
+     * where there is nothing.
+     */
+    public function test_a_residents_document_points_at_the_server_that_holds_their_repository(): void
+    {
+        $this->identities()->forResident('alice.games.test');
+
+        $document = $this->get('http://alice.games.test/.well-known/did.json')->assertOk()->json();
+
+        $this->assertNotEmpty($document['service']);
+        $this->assertSame('https://games.test', $document['service'][0]['serviceEndpoint']);
+        $this->assertSame('AtprotoPersonalDataServer', $document['service'][0]['type']);
+    }
+
     public function test_a_stranger_can_resolve_the_name_back_to_the_identity(): void
     {
         $identity = $this->identities()->forServer();
