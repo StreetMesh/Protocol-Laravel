@@ -27,7 +27,7 @@ class PermissionTest extends TestCase
 {
     private const VENUE = 'https://games.test/client-metadata.json';
 
-    private const REDIRECT = 'https://games.test/visit/callback';
+    private const REDIRECT = 'https://games.test/connect/callback';
 
     private const ISSUER = 'https://home.test';
 

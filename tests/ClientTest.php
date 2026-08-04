@@ -16,6 +16,17 @@ use StreetMesh\Protocol\P256;
  */
 class ClientTest extends TestCase
 {
+    /**
+     * The route that receives somebody coming back, which in a real deployment
+     * belongs to the venue package. Stubbed here because this document's whole
+     * job is to publish that address, and a package that names a route it does
+     * not own should fail loudly when nothing owns it.
+     */
+    protected function defineRoutes($router): void
+    {
+        $router->get('connect/callback', fn () => '')->name('venue.callback');
+    }
+
     private function identities(): Identities
     {
         return $this->app->make(Identities::class);

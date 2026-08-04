@@ -32,16 +32,32 @@ final class ClientController
             clientId: route('streetmesh.client'),
             clientName: (string) config('app.name'),
             clientUri: $host,
-            /*
-             * `??` rather than config()'s second argument, which is returned
-             * only when the key is absent. The key is present and null whenever
-             * the environment variable behind it is unset, which is the ordinary
-             * case — so the default here would never have been reached.
-             */
-            redirectUris: [(string) (config('streetmesh.oauth.redirect') ?? $host.'/visit/callback')],
+            redirectUris: [$this->redirect()],
             jwksUri: route('streetmesh.jwks'),
             scopes: (array) config('streetmesh.oauth.scopes', []),
         )->toArray());
+    }
+
+    /**
+     * Where a domicile sends somebody back to.
+     *
+     * Looked up by route name rather than written down, because this address is
+     * published here *and* sent with every authorization request, and a domicile
+     * refuses the request if the two disagree. Kept as two strings, moving the
+     * route would have broken every authorization silently — and the refusal
+     * arrives from somebody else's server, where it reads as their fault.
+     *
+     * Resolved now rather than at boot, so that it does not depend on which
+     * provider registered its routes first.
+     *
+     * An operator who sets an absolute URL still wins; `??` rather than
+     * config()'s second argument, which is returned only when the key is
+     * absent, and the key is present and null whenever nothing has set it.
+     */
+    private function redirect(): string
+    {
+        return (string) (config('streetmesh.oauth.redirect')
+            ?? route((string) config('streetmesh.oauth.redirect_route')));
     }
 
     /**

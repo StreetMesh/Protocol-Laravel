@@ -71,9 +71,14 @@ return [
      | there is nothing to register anywhere and no secret to share. These are
      | the parts of that document an operator gets to decide.
      |
-     | `redirect` is where a person lands coming back from their own server
-     | having approved something. It must be one of the addresses the published
-     | document lists, or their server will refuse to send them there.
+     | `redirect_route` names the route that receives somebody coming back from
+     | their own server having approved something. A name rather than an address
+     | because the same value has to be published here and sent with every
+     | authorization request, and their server refuses if the two disagree — so
+     | there is one of it, and moving the route cannot break it.
+     |
+     | `redirect` overrides that with an absolute URL, for an operator whose
+     | venue sits behind something that rewrites addresses.
      |
      | `scopes` are asked for in addition to `atproto`, which is always included
      | and is the claim to be following this profile at all. Anything ATProtocol
@@ -83,6 +88,7 @@ return [
      */
 
     'oauth' => [
+        'redirect_route' => 'venue.callback',
         'redirect' => env('STREETMESH_OAUTH_REDIRECT'),
         'scopes' => [],
     ],

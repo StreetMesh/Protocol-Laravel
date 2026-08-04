@@ -52,7 +52,7 @@ class RepoTest extends TestCase
         $this->network = (new FakeNetwork)
             ->serve(self::VENUE, [
                 'client_id' => self::VENUE,
-                'redirect_uris' => ['https://games.test/visit/callback'],
+                'redirect_uris' => ['https://games.test/connect/callback'],
                 'jwks_uri' => 'https://games.test/jwks.json',
             ])
             ->serve('https://games.test/jwks.json', ClientMetadata::keySet([
@@ -91,7 +91,7 @@ class RepoTest extends TestCase
 
         $pushed = $permissions->push([
             'client_id' => self::VENUE,
-            'redirect_uri' => 'https://games.test/visit/callback',
+            'redirect_uri' => 'https://games.test/connect/callback',
             'scope' => $scope,
             'code_challenge' => $pkce->challenge(),
             'code_challenge_method' => 'S256',

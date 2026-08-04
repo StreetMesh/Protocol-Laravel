@@ -92,7 +92,7 @@ class DelegationTest extends TestCase
             ], 201),
         ]);
 
-        $begun = $this->delegations()->begin('alice.home.test', [(string) Scope::forRepo([self::CHESS], [Scope::CREATE])], 'https://games.test/visit/callback');
+        $begun = $this->delegations()->begin('alice.home.test', [(string) Scope::forRepo([self::CHESS], [Scope::CREATE])], 'https://games.test/connect/callback');
 
         $this->assertStringStartsWith(self::THEIR_SERVER.'/oauth/authorize?', $begun['url']);
 
@@ -124,7 +124,7 @@ class DelegationTest extends TestCase
             },
         ]);
 
-        $begun = $this->delegations()->begin('alice.home.test', [], 'https://games.test/visit/callback');
+        $begun = $this->delegations()->begin('alice.home.test', [], 'https://games.test/connect/callback');
 
         $this->assertSame(2, $asked, 'it should have retried with the nonce it was handed');
         $this->assertStringContainsString('request_uri', $begun['url']);
@@ -148,7 +148,7 @@ class DelegationTest extends TestCase
         $finished = $this->delegations()->complete(
             (string) $delegation->state,
             'a-code',
-            'https://games.test/visit/callback',
+            'https://games.test/connect/callback',
         );
 
         $this->assertSame('a-live-token', $finished->access_token);
@@ -171,7 +171,7 @@ class DelegationTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
 
-        $this->delegations()->complete('a-state-we-never-issued', 'a-code', 'https://games.test/visit/callback');
+        $this->delegations()->complete('a-state-we-never-issued', 'a-code', 'https://games.test/connect/callback');
     }
 
     public function test_a_record_is_signed_before_it_is_sent(): void
@@ -285,7 +285,7 @@ class DelegationTest extends TestCase
         return $this->delegations()->begin(
             'alice.home.test',
             [(string) Scope::forRepo([self::CHESS], [Scope::CREATE])],
-            'https://games.test/visit/callback',
+            'https://games.test/connect/callback',
         )['delegation'];
     }
 
@@ -303,6 +303,6 @@ class DelegationTest extends TestCase
             ]),
         ]);
 
-        return $this->delegations()->complete((string) $delegation->state, 'a-code', 'https://games.test/visit/callback');
+        return $this->delegations()->complete((string) $delegation->state, 'a-code', 'https://games.test/connect/callback');
     }
 }
