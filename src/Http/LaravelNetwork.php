@@ -52,6 +52,39 @@ final class LaravelNetwork implements Network
     }
 
     /**
+     * Submit a body, and hand back what came out.
+     *
+     * Not cached, and never null. Everything else here asks a question with a
+     * useful negative answer — "is it there?" has a fallback ready. This one
+     * changes something on somebody else's server, and an operation that was
+     * refused and one that was never sent leave the caller in different places,
+     * only one of which is safe to retry. So the status and the body come back
+     * intact and the caller decides what they mean.
+     *
+     * @param  array<string, string>  $headers
+     * @return array{status: int, body: string}
+     */
+    public function post(string $url, string $body, array $headers = []): array
+    {
+        try {
+            $response = Http::withBody($body, 'application/json')
+                ->withHeaders($headers)
+                ->timeout($this->timeoutSeconds)
+                ->withUserAgent('streetmesh-protocol-laravel')
+                ->post($url);
+        } catch (Throwable $failed) {
+            /*
+             * Status 0 says "this never reached anybody", which is the one
+             * outcome that is safe to try again. A refusal carries a real
+             * status and must not be confused with it.
+             */
+            return ['status' => 0, 'body' => $failed->getMessage()];
+        }
+
+        return ['status' => $response->status(), 'body' => $response->body()];
+    }
+
+    /**
      * @return array<int, string>
      */
     public function txt(string $name): array
