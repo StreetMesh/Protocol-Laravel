@@ -97,7 +97,7 @@
                 @endforeach
             </ul>
 
-            <p class="quiet">{{ __('You can take this back at any time.') }}</p>
+            <p class="quiet">{{ __('You can revoke this at any time.') }}</p>
 
             <form method="POST" action="{{ route('streetmesh.oauth.approve') }}">
                 @csrf
