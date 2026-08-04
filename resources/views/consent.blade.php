@@ -83,6 +83,8 @@
                 color: var(--mark-ink);
                 font-weight: 500;
             }
+
+            button:disabled { opacity: .5; cursor: default; }
         </style>
     </head>
     <body>
@@ -99,7 +101,18 @@
 
             <p class="quiet">{{ __('You can revoke this at any time.') }}</p>
 
-            <form method="POST" action="{{ route('streetmesh.oauth.approve') }}">
+            {{--
+                Answering takes a round trip, which is long enough to press
+                again. Both go dead on the first press.
+
+                Deferred by a tick rather than disabled as the form is
+                submitted: the answer travels as the pressed button's own name
+                and value, and a button disabled while the form is still being
+                gathered contributes neither — the request would arrive with no
+                answer in it. No framework here, so this is the whole of it.
+            --}}
+            <form method="POST" action="{{ route('streetmesh.oauth.approve') }}"
+                  onsubmit="setTimeout(() => this.querySelectorAll('button').forEach(b => b.disabled = true), 0)">
                 @csrf
                 <input type="hidden" name="request_uri" value="{{ $permission->request_uri }}">
 
