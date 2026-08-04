@@ -2,6 +2,7 @@
 
 namespace StreetMesh\Protocol\Laravel\Identity;
 
+use Illuminate\Database\Eloquent\Model;
 use RuntimeException;
 use StreetMesh\Protocol\Did;
 use StreetMesh\Protocol\Ed25519;
@@ -96,6 +97,27 @@ final class Identities
     public function byDid(string $did): ?Identity
     {
         return Identity::query()->where('did', $did)->first();
+    }
+
+    /**
+     * The identity belonging to somebody signed in here.
+     *
+     * A person's account and their identity are different things, and the gap
+     * matters: an account is how they get into this server, and an identity is
+     * who they are to every other one. Somebody can hold an account here and
+     * have no identity — a fresh install, or a server that has not started
+     * issuing them — and that is a real state rather than an error.
+     *
+     * Never the server's own. A server has an identity too, and handing it back
+     * for whoever happens to be signed in would let a person act as the server.
+     */
+    public function forUser(Model $user): ?Identity
+    {
+        return Identity::query()
+            ->where('owner_type', $user->getMorphClass())
+            ->where('owner_id', $user->getKey())
+            ->where('is_server', false)
+            ->first();
     }
 
     public function byHandle(string $handle): ?Identity

@@ -6,7 +6,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
-use StreetMesh\Protocol\Laravel\Identity\Identity;
+use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
 use StreetMesh\Protocol\Scope;
 
@@ -24,7 +24,10 @@ use StreetMesh\Protocol\Scope;
  */
 final class ConsentController
 {
-    public function __construct(private readonly Permissions $permissions) {}
+    public function __construct(
+        private readonly Permissions $permissions,
+        private readonly Identities $identities,
+    ) {}
 
     public function show(Request $request): View
     {
@@ -133,13 +136,7 @@ final class ConsentController
     {
         $user = $request->user();
 
-        $identity = $user === null
-            ? null
-            : Identity::query()
-                ->where('owner_type', $user->getMorphClass())
-                ->where('owner_id', $user->getKey())
-                ->where('is_server', false)
-                ->first();
+        $identity = $user === null ? null : $this->identities->forUser($user);
 
         return $identity->did ?? throw new RuntimeException(
             'Whoever is signed in has no identity of their own, so there is nothing to grant permission over.'
