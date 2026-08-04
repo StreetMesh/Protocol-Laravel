@@ -17,14 +17,72 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ __('Permission') }}</title>
         <style>
-            body { font: 16px/1.6 system-ui, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; background: #14181a; color: #f4f4f5; }
-            main { max-width: 32rem; padding: 2rem; }
-            h1 { font-size: 1.25rem; font-weight: 600; }
-            .venue { color: #00ff99; }
-            ul { padding-left: 1.2rem; }
-            form { display: flex; gap: .75rem; margin-top: 2rem; }
-            button { font: inherit; padding: .6rem 1.2rem; border-radius: 6px; border: 1px solid #3f3f46; background: transparent; color: inherit; cursor: pointer; }
-            button.yes { background: #00ff99; border-color: #00ff99; color: #14181a; font-weight: 600; }
+            /*
+             * Follows the reader rather than announcing itself. A page that is
+             * dark whatever the rest of the machine is doing looks like it came
+             * from somewhere else — which is the one impression a screen asking
+             * for permission cannot afford to give.
+             */
+            :root {
+                color-scheme: light dark;
+                --paper: #ffffff;
+                --ink: #18181b;
+                --quiet: #52525b;
+                --edge: #d4d4d8;
+                --mark: #047857;
+                --mark-ink: #ffffff;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --paper: #18181b;
+                    --ink: #fafafa;
+                    --quiet: #a1a1aa;
+                    --edge: #3f3f46;
+                    --mark: #00ff99;
+                    --mark-ink: #18181b;
+                }
+            }
+
+            body {
+                font: 16px/1.6 system-ui, -apple-system, sans-serif;
+                margin: 0;
+                display: grid;
+                place-items: center;
+                min-height: 100vh;
+                background: var(--paper);
+                color: var(--ink);
+            }
+
+            /* The width of a sign-in form, because it is that kind of screen. */
+            main { width: 100%; max-width: 24rem; padding: 2rem; box-sizing: border-box; }
+
+            h1 { font-size: 1.125rem; font-weight: 600; margin: 0 0 .5rem; }
+            p { margin: .5rem 0; }
+            .quiet { color: var(--quiet); font-size: .875rem; }
+            .venue { color: var(--mark); }
+            ul { padding-left: 1.2rem; margin: .75rem 0; }
+
+            form { display: flex; gap: .5rem; margin-top: 1.5rem; }
+
+            button {
+                font: inherit;
+                font-size: .875rem;
+                flex: 1;
+                padding: .5rem .75rem;
+                border-radius: 8px;
+                border: 1px solid var(--edge);
+                background: transparent;
+                color: inherit;
+                cursor: pointer;
+            }
+
+            button.yes {
+                background: var(--mark);
+                border-color: var(--mark);
+                color: var(--mark-ink);
+                font-weight: 500;
+            }
         </style>
     </head>
     <body>
@@ -39,7 +97,7 @@
                 @endforeach
             </ul>
 
-            <p>{{ __('You can take this back at any time.') }}</p>
+            <p class="quiet">{{ __('You can take this back at any time.') }}</p>
 
             <form method="POST" action="{{ route('streetmesh.oauth.approve') }}">
                 @csrf
