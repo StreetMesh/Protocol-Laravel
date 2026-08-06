@@ -1,7 +1,13 @@
 {
     "name": "streetmesh/protocol-laravel",
     "description": "The StreetMesh protocol for Laravel: identity, records, and the bindings that make them usable.",
-    "keywords": ["streetmesh", "laravel", "atproto", "did", "federation"],
+    "keywords": [
+        "streetmesh",
+        "laravel",
+        "atproto",
+        "did",
+        "federation"
+    ],
     "homepage": "https://protocol.streetmesh.com",
     "license": "MIT",
     "require": {
@@ -20,6 +26,13 @@
         "phpunit/phpunit": "^11.4"
     },
     "repositories": [
+        {
+            "type": "path",
+            "url": "../protocol",
+            "options": {
+                "symlink": true
+            }
+        },
         {
             "type": "vcs",
             "url": "https://github.com/StreetMesh/Protocol-PHP.git"
@@ -50,7 +63,11 @@
     "scripts": {
         "lint": "pint",
         "lint:check": "pint --test",
-        "test": ["@lint:check", "@types:check", "phpunit"],
+        "test": [
+            "@lint:check",
+            "@types:check",
+            "phpunit"
+        ],
         "types:check": "phpstan analyse"
     }
 }

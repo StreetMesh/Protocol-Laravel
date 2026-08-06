@@ -32,6 +32,32 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | What this server offers
+     |--------------------------------------------------------------------------
+     |
+     | Installing a package is how a capability arrives, and for a server that
+     | does one thing that is the whole of it. These switches are for the case
+     | that is not: two servers built from one codebase, installing the same
+     | packages, which are not the same server.
+     |
+     | Unset means offered. Setting one to false is an operator saying "not
+     | this one here" — declared, rather than deduced from something adjacent,
+     | so a forgotten line cannot quietly change what a server is.
+     |
+     | Named for what each capability calls itself, so an installed package
+     | nobody here has heard of gets a switch on the same terms.
+     |
+     */
+    'capabilities' => [
+
+        'domicile' => env('STREETMESH_DOMICILE'),
+
+        'venue' => env('STREETMESH_VENUE'),
+
+    ],
+
+    /*
+     |--------------------------------------------------------------------------
      | The front page
      |--------------------------------------------------------------------------
      |

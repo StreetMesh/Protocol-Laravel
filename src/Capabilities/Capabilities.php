@@ -22,8 +22,30 @@ final class Capabilities
     /** @var array<string, Capability> */
     private array $registered = [];
 
+    /**
+     * @param  array<string, bool|null>  $wanted  what the operator has switched on
+     */
+    public function __construct(private readonly array $wanted = []) {}
+
+    /**
+     * Offered, unless the operator said otherwise.
+     *
+     * Installing a package is how a capability arrives, and for a server that
+     * does one thing that is the whole of the configuration. Two servers built
+     * from one codebase need more than that: Domiciles and Tabletop install the
+     * same packages and are not the same server.
+     *
+     * So it is declared rather than inferred. Deducing it from something
+     * adjacent — no hub configured, therefore not a venue — would turn a
+     * forgotten line into a server that quietly stopped being what its operator
+     * thought it was.
+     */
     public function register(Capability $capability): void
     {
+        if (($this->wanted[$capability->name()] ?? true) === false) {
+            return;
+        }
+
         $this->registered[$capability->name()] = $capability;
     }
 

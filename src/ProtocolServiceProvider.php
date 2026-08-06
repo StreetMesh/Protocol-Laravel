@@ -65,7 +65,9 @@ class ProtocolServiceProvider extends ServiceProvider
 
         $this->app->singleton(DidResolver::class);
 
-        $this->app->singleton(Capabilities::class);
+        $this->app->singleton(Capabilities::class, fn ($app): Capabilities => new Capabilities(
+            (array) config('streetmesh.capabilities', []),
+        ));
 
         $this->app->singleton(Identities::class, fn ($app): Identities => new Identities(
             directory: $app->make(PlcDirectory::class),
