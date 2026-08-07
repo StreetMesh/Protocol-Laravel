@@ -39,6 +39,22 @@ interface Capability
     public function frontPage(): ?string;
 
     /**
+     * The way in, offered on the front page beneath whatever that page says.
+     *
+     * Declared here because it is not the same door everywhere and the
+     * application cannot know which one it is. A domicile signs somebody in: it
+     * holds accounts, and the person arriving has one. A venue holds no
+     * accounts at all — somebody arrives with an address from another server —
+     * so sending them to a login form is offering them a key to a lock that
+     * does not exist.
+     *
+     * Null for a capability with no front door of its own.
+     *
+     * @return null|array{label: string, route: string}
+     */
+    public function frontAction(): ?array;
+
+    /**
      * Panels this capability offers for a signed-in person's home page.
      *
      * Offered rather than placed. The home page is the one surface where two

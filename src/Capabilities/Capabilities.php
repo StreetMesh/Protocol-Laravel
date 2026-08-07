@@ -102,6 +102,31 @@ final class Capabilities
     }
 
     /**
+     * The way in for whichever capability greets people.
+     *
+     * Asked with the same preference as `frontPage`, so the page and the button
+     * under it always come from the same capability. A front page that welcomes
+     * visitors above a button that signs residents in would be two servers
+     * talking at once.
+     *
+     * @return null|array{label: string, route: string}
+     */
+    public function frontAction(?string $preferred = null): ?array
+    {
+        if ($preferred !== null && $this->has($preferred)) {
+            return $this->get($preferred)->frontAction();
+        }
+
+        foreach ($this->registered as $capability) {
+            if ($capability->frontPage() !== null) {
+                return $capability->frontAction();
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Every panel on offer, optionally narrowed and ordered by the operator.
      *
      * An arrangement naming a widget nothing provides is skipped rather than

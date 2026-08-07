@@ -90,6 +90,11 @@ final class CapabilitiesTest extends Plain
                 return null;
             }
 
+            public function frontAction(): ?array
+            {
+                return null;
+            }
+
             public function widgets(): array
             {
                 return [];
