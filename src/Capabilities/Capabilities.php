@@ -54,6 +54,23 @@ final class Capabilities
         return isset($this->registered[$name]);
     }
 
+    /**
+     * Whether this server is configured to offer something, whoever has booted.
+     *
+     * `has()` answers about the registry, so it is only true once that
+     * capability's own provider has run — and a package that boots earlier gets
+     * "no" for something the server plainly offers. An experience asking
+     * whether to register its screens hit exactly that: chess boots before the
+     * venue, so on a venue it decided there was no venue.
+     *
+     * This asks the switch instead, which is settled before anything boots.
+     * Absent means offered, the same as everywhere else.
+     */
+    public function offers(string $name): bool
+    {
+        return ($this->wanted[$name] ?? true) !== false;
+    }
+
     public function get(string $name): Capability
     {
         return $this->registered[$name]
@@ -120,6 +137,29 @@ final class Capabilities
         foreach ($this->registered as $capability) {
             if ($capability->frontPage() !== null) {
                 return $capability->frontAction();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whoever is here, from whichever capability can see them.
+     *
+     * The first answer wins, and on a server that is both a domicile and a
+     * venue there can genuinely be two: somebody signed in as a resident who
+     * has also arrived as a visitor. Registration order decides, which is the
+     * same rule the front page uses, and either answer is true.
+     *
+     * @return null|array{name: string, leave: array{label: string, route: string}}
+     */
+    public function whoever(): ?array
+    {
+        foreach ($this->registered as $capability) {
+            $whoever = $capability->whoever();
+
+            if ($whoever !== null) {
+                return $whoever;
             }
         }
 

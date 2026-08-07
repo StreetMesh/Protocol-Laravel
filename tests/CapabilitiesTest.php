@@ -95,6 +95,11 @@ final class CapabilitiesTest extends Plain
                 return null;
             }
 
+            public function whoever(): ?array
+            {
+                return null;
+            }
+
             public function widgets(): array
             {
                 return [];

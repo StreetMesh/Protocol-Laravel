@@ -55,6 +55,27 @@ interface Capability
     public function frontAction(): ?array;
 
     /**
+     * Whoever is here, as this capability knows them — or nobody.
+     *
+     * The two capabilities mean different things by "here" and neither can be
+     * deduced from the other. A domicile has a **resident**: an account, a
+     * password, a session the framework understands. A venue has a **visitor**:
+     * somebody holding permission from another server, who the framework's own
+     * `auth()` knows nothing about at all.
+     *
+     * Asked because the chrome cannot tell. A layout that checks `auth()` shows
+     * a venue's visitors a "Log in" link for accounts that server does not
+     * have, next to screens they are already using.
+     *
+     * `leave` is the way out, and is a POST — signing out and giving up a seat
+     * both change something, and neither should happen because a link was
+     * prefetched.
+     *
+     * @return null|array{name: string, leave: array{label: string, route: string}}
+     */
+    public function whoever(): ?array;
+
+    /**
      * Panels this capability offers for a signed-in person's home page.
      *
      * Offered rather than placed. The home page is the one surface where two
