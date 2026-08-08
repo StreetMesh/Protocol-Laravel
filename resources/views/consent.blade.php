@@ -89,9 +89,9 @@
     </head>
     <body>
         <main>
-            <h1><span class="venue">{{ $venue }}</span> {{ __('would like permission') }}</h1>
+            <h1><span class="venue">{{ $venue }}</span> {{ __('wants to connect') }}</h1>
 
-            <p>{{ __('It is asking to:') }}</p>
+            <p>{{ __("Permissions you're granting:") }}</p>
 
             <ul>
                 @foreach ($asking as $sentence)
@@ -117,7 +117,7 @@
                 <input type="hidden" name="request_uri" value="{{ $permission->request_uri }}">
 
                 <button type="submit" name="answer" value="yes" class="yes">{{ __('Allow') }}</button>
-                <button type="submit" name="answer" value="no">{{ __('Not now') }}</button>
+                <button type="submit" name="answer" value="no">{{ __('Cancel') }}</button>
             </form>
         </main>
     </body>
