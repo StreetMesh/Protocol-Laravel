@@ -41,8 +41,10 @@ final class Tickets
     /**
      * @param  string  $room  the room being joined, compared rather than trusted
      *                        at the other end
+     * @param  array<int, string>  $taken  every seat this venue has filled, which
+     *                                     is a thing only the venue knows
      */
-    public function mint(Delegation $visitor, string $room, string $seat = ''): string
+    public function mint(Delegation $visitor, string $room, string $seat = '', array $taken = []): string
     {
         if ($visitor->did === null) {
             throw new RuntimeException('Somebody who has not been seated cannot be given a ticket.');
@@ -61,6 +63,23 @@ final class Tickets
 
             'room' => $room,
             'seat' => $seat,
+
+            /*
+             * Not this visitor's business, and sent anyway.
+             *
+             * Which seats are filled is the venue's record, and the realtime
+             * half has no way to learn it: it sees connections, and a
+             * connection is not a seat. Anything that turns on there being two
+             * players — resigning, most of all — would otherwise have to ask
+             * whether both are online this second, and answer "no" to somebody
+             * whose opponent has closed their tab.
+             *
+             * It rides on the ticket because that is the only thing this server
+             * signs on the way in. A room that asked the venue instead would be
+             * a room holding a credential, and the whole arrangement here is
+             * that it holds none.
+             */
+            'taken' => array_values(array_unique($taken)),
 
             'exp' => now()->addSeconds(self::LIFETIME_SECONDS)->getTimestamp(),
             'jti' => bin2hex(random_bytes(16)),
