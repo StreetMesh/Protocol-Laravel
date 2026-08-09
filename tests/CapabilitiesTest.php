@@ -5,6 +5,7 @@ namespace StreetMesh\Protocol\Laravel\Tests;
 use PHPUnit\Framework\TestCase as Plain;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Capabilities\Capability;
+use StreetMesh\Protocol\Laravel\Capabilities\Mark;
 
 /**
  * What a server offers, and the operator's say in it.
@@ -109,6 +110,54 @@ final class CapabilitiesTest extends Plain
             {
                 return [];
             }
+
+            public function mark(): Mark
+            {
+                return new Mark('brand/'.$this->name.'-mark');
+            }
         };
+    }
+
+    /**
+     * Two halves of one server, wearing two marks.
+     *
+     * The whole reason a mark belongs to a capability rather than to the
+     * application: a server can be a domicile and a venue at once, and one mark
+     * for both would tell somebody reading their own records that they were at
+     * the games room.
+     */
+    public function test_each_capability_answers_with_its_own_mark(): void
+    {
+        $capabilities = new Capabilities;
+
+        $capabilities->register($this->capability('venue'));
+        $capabilities->register($this->capability('domicile'));
+
+        $this->assertStringContainsString('venue-mark-small.svg', $capabilities->mark('venue')->light());
+        $this->assertStringContainsString('domicile-mark-small.svg', $capabilities->mark('domicile')->light());
+    }
+
+    /**
+     * The pair from one name, because a mark that carries its own ground needs
+     * a second drawing and two configured paths could disagree.
+     */
+    public function test_a_mark_names_its_own_dark_drawing(): void
+    {
+        $mark = new Mark('brand/tabletop-mark');
+
+        $this->assertStringContainsString('tabletop-mark-small.svg', $mark->light());
+        $this->assertStringContainsString('tabletop-mark-dark-small.svg', $mark->dark());
+    }
+
+    /**
+     * Shared chrome asks for nothing in particular, and a screen must not fail
+     * to render because a package was removed from under it.
+     */
+    public function test_the_server_has_a_mark_of_its_own(): void
+    {
+        $capabilities = new Capabilities;
+
+        $this->assertStringContainsString('streetmesh-mark-small.svg', $capabilities->mark()->light());
+        $this->assertStringContainsString('streetmesh-mark-small.svg', $capabilities->mark('absent')->light());
     }
 }

@@ -91,4 +91,20 @@ interface Capability
      * @return array<int, array{label: string, route: string, icon?: string}>
      */
     public function navigation(): array;
+
+    /**
+     * The mark this capability wears.
+     *
+     * Its own rather than the application's, because a server can be a domicile
+     * and a venue at once and those are two things to be. Somebody at the venue
+     * half is somewhere called Tabletop; the same server answering for that
+     * person's records is StreetMesh. One mark for the whole application could
+     * only ever be right about one of them.
+     *
+     * Defaulted by the package and overridden by the operator, so nobody has to
+     * set this: a capability that is not separately branded answers with the
+     * server's own mark, and a server that configures nothing looks exactly as
+     * it did before there was a choice to make.
+     */
+    public function mark(): Mark;
 }

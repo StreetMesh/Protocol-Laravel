@@ -5,6 +5,7 @@ namespace StreetMesh\Protocol\Laravel\Http;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use RuntimeException;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
 use StreetMesh\Protocol\Laravel\Permissions\Permissions;
@@ -29,9 +30,13 @@ final class ConsentController
         private readonly Identities $identities,
     ) {}
 
-    public function show(Request $request): View
+    public function show(Request $request): View|Response
     {
-        $permission = $this->permissions->pending((string) $request->query('request_uri'));
+        $permission = $this->permissions->awaiting((string) $request->query('request_uri'));
+
+        if ($permission === null) {
+            return $this->gone($request);
+        }
 
         /** @var view-string $consent */
         $consent = 'streetmesh::consent';
@@ -50,9 +55,13 @@ final class ConsentController
         ]);
     }
 
-    public function approve(Request $request): RedirectResponse
+    public function approve(Request $request): RedirectResponse|Response
     {
-        $permission = $this->permissions->pending((string) $request->input('request_uri'));
+        $permission = $this->permissions->awaiting((string) $request->input('request_uri'));
+
+        if ($permission === null) {
+            return $this->gone($request);
+        }
 
         $did = $this->didOf($request);
 
@@ -81,6 +90,37 @@ final class ConsentController
              */
             'iss' => rtrim(url('/'), '/'),
         ]));
+    }
+
+    /**
+     * There is nothing here to answer, said as a page rather than as a crash.
+     *
+     * The two ways to arrive: a screen left open past the few minutes a request
+     * lasts, and a reload after already deciding — because answering empties
+     * the request. Both are ordinary things for a person to do and neither is a
+     * fault of any kind, which is what made a 500 the wrong response to it.
+     *
+     * `410` rather than `404`. It was here, it isn't now, and that is exactly
+     * what the code is for — it also stops a browser or a proxy holding on to
+     * the page and offering it again later.
+     *
+     * The venue is dug out of `client_id` when there is one, because the
+     * permission that knew where to send somebody is precisely the thing that
+     * has gone. On the POST there is no `client_id` — the form carries only the
+     * handle — so the page falls back to naming nowhere in particular, and the
+     * person still has a way out through this server's own front page.
+     */
+    private function gone(Request $request): Response
+    {
+        $clientId = (string) $request->input('client_id');
+        $venue = $clientId === '' ? null : parse_url($clientId, PHP_URL_HOST);
+
+        /** @var view-string $expired */
+        $expired = 'streetmesh::expired';
+
+        return response()->view($expired, [
+            'venue' => is_string($venue) ? $venue : null,
+        ], 410);
     }
 
     /**

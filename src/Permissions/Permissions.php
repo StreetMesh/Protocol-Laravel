@@ -100,16 +100,31 @@ final class Permissions
 
     /**
      * What the person is being asked to agree to, found from the handle.
+     *
+     * Throws, for callers that cannot go on without one. A screen somebody is
+     * looking at is not one of those — see `awaiting`.
      */
     public function pending(string $requestUri): Permission
     {
-        $permission = Permission::query()
+        return $this->awaiting($requestUri)
+            ?? throw new RuntimeException('That request has expired or was already answered.');
+    }
+
+    /**
+     * The same lookup, for somewhere that has to cope with the answer being no.
+     *
+     * Nothing here is a fault. A request lasts a few minutes and is emptied the
+     * moment it is answered, so somebody who left the screen open over lunch,
+     * or reloaded it after deciding, is asking a reasonable question and
+     * getting the true answer. What they must not get is a stack trace.
+     */
+    public function awaiting(string $requestUri): ?Permission
+    {
+        return Permission::query()
             ->where('request_uri', $requestUri)
             ->where('request_expires_at', '>', now())
             ->whereNull('approved_at')
             ->first();
-
-        return $permission ?? throw new RuntimeException('That request has expired or was already answered.');
     }
 
     /**

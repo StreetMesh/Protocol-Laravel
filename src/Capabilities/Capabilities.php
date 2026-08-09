@@ -19,6 +19,15 @@ use RuntimeException;
  */
 final class Capabilities
 {
+    /**
+     * The mark a server wears when nothing else has been said.
+     *
+     * StreetMesh's own, because that is what an unbranded server running this
+     * software is. A capability with a name of its own overrides it; one
+     * without inherits it, and so does the chrome around both.
+     */
+    public const OWN_MARK = 'brand/streetmesh-mark';
+
     /** @var array<string, Capability> */
     private array $registered = [];
 
@@ -75,6 +84,21 @@ final class Capabilities
     {
         return $this->registered[$name]
             ?? throw new RuntimeException("This server does not offer [{$name}].");
+    }
+
+    /**
+     * The mark a named capability wears, or the server's own.
+     *
+     * Naming one that is not installed is not an error here, unlike `get`.
+     * Chrome is shared, and a layout asking for the venue's mark on a server
+     * with no venue is asking a reasonable question with an obvious answer — a
+     * screen must not fail to render because a package was removed.
+     */
+    public function mark(?string $name = null): Mark
+    {
+        $capability = $name === null ? null : ($this->registered[$name] ?? null);
+
+        return $capability?->mark() ?? new Mark(self::OWN_MARK);
     }
 
     /**

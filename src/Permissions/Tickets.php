@@ -39,6 +39,43 @@ final class Tickets
     ) {}
 
     /**
+     * A way in for somebody the venue cannot name.
+     *
+     * Watching a public gathering asks nothing of anybody: no door, no account,
+     * nothing pressed first. So there is no delegation to mint from, and the
+     * venue is asserting something weaker than usual — not "this is so-and-so"
+     * but "somebody may look at this", which is all a room needs to let them.
+     *
+     * The subject is invented per ticket and means nothing anywhere else. It
+     * has to be there because a room identifies occupants by it, and it has to
+     * differ between watchers because a room treats a second arrival under one
+     * subject as the same person returning — one shared identifier would have
+     * every watcher throwing the last one out.
+     *
+     * No seat, and that is not an oversight. This admits somebody to look, and
+     * the room's own rules do the rest: chess already refuses a move from
+     * anybody whose ticket seats them nowhere.
+     *
+     * @param  array<int, string>  $taken  every seat the venue has filled
+     */
+    public function watcher(string $room, array $taken = []): string
+    {
+        $identity = $this->identities->forServer();
+
+        return $this->attestations->issue([
+            'sub' => 'guest:'.bin2hex(random_bytes(16)),
+            'name' => __('Somebody watching'),
+
+            'room' => $room,
+            'seat' => '',
+            'taken' => array_values(array_unique($taken)),
+
+            'exp' => now()->addSeconds(self::LIFETIME_SECONDS)->getTimestamp(),
+            'jti' => bin2hex(random_bytes(16)),
+        ], $identity->key(), $identity->keyId());
+    }
+
+    /**
      * @param  string  $room  the room being joined, compared rather than trusted
      *                        at the other end
      * @param  array<int, string>  $taken  every seat this venue has filled, which
