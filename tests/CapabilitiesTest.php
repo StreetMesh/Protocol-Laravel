@@ -70,11 +70,14 @@ final class CapabilitiesTest extends Plain
         $this->assertFalse($capabilities->has('shop'));
     }
 
-    private function capability(string $name): Capability
+    private function capability(string $name, bool $greets = false): Capability
     {
-        return new class($name) implements Capability
+        return new class($name, $greets) implements Capability
         {
-            public function __construct(private readonly string $name) {}
+            public function __construct(
+                private readonly string $name,
+                private readonly bool $greets,
+            ) {}
 
             public function name(): string
             {
@@ -88,7 +91,7 @@ final class CapabilitiesTest extends Plain
 
             public function frontPage(): ?string
             {
-                return null;
+                return $this->greets ? $this->name.'::front' : null;
             }
 
             public function frontAction(): ?array
@@ -160,4 +163,33 @@ final class CapabilitiesTest extends Plain
         $this->assertStringContainsString('streetmesh-mark-small.svg', $capabilities->mark()->light());
         $this->assertStringContainsString('streetmesh-mark-small.svg', $capabilities->mark('absent')->light());
     }
+
+    /**
+     * The chrome belongs to no capability in particular, so it wears the mark
+     * of whichever one greets people — a sidebar is drawn around whatever
+     * screen you are on, and a server that is only a venue is that venue
+     * everywhere, not on the two screens somebody remembered to label.
+     */
+    public function test_the_chrome_wears_the_mark_of_whoever_greets_people(): void
+    {
+        $capabilities = new Capabilities;
+        $capabilities->register($this->capability(greets: true, name: 'venue'));
+
+        $this->assertStringContainsString('venue-mark-small.svg', $capabilities->mark()->light());
+    }
+
+    /**
+     * And on a server that is more than one thing, the operator has already
+     * said which greets strangers. There is no second question to ask them.
+     */
+    public function test_a_blended_server_follows_the_operators_preference(): void
+    {
+        $capabilities = new Capabilities;
+        $capabilities->register($this->capability(greets: true, name: 'domicile'));
+        $capabilities->register($this->capability(greets: true, name: 'venue'));
+
+        $this->assertStringContainsString('venue-mark-small.svg', $capabilities->mark(null, 'venue')->light());
+        $this->assertStringContainsString('domicile-mark-small.svg', $capabilities->mark(null, 'domicile')->light());
+    }
+
 }

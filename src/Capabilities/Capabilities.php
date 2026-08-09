@@ -94,11 +94,49 @@ final class Capabilities
      * with no venue is asking a reasonable question with an obvious answer — a
      * screen must not fail to render because a package was removed.
      */
-    public function mark(?string $name = null): Mark
+    public function mark(?string $name = null, ?string $preferred = null): Mark
     {
-        $capability = $name === null ? null : ($this->registered[$name] ?? null);
+        /*
+         * Naming nobody means the chrome, which belongs to no capability in
+         * particular — a sidebar is drawn around whatever screen you are on.
+         * The one that greets people answers for it, because that is the thing
+         * this server is to somebody looking at it: a venue-only server is
+         * Tabletop everywhere, and on a blended server the operator has already
+         * had to say which one greets strangers, so there is no second question
+         * to ask them.
+         */
+        $capability = $name === null
+            ? $this->greeter($preferred)
+            : ($this->registered[$name] ?? null);
 
         return $capability?->mark() ?? new Mark(self::OWN_MARK);
+    }
+
+    /**
+     * Whichever capability greets people.
+     *
+     * The operator's preference where there is one, and otherwise the first
+     * that offers a front page — so a server with a single capability needs no
+     * configuration at all, which is most of them.
+     *
+     * Extracted because three things now ask this same question and the answer
+     * has to be the same for all of them. A front page welcoming visitors above
+     * a button signing residents in, under a mark belonging to neither, would
+     * be three servers talking at once.
+     */
+    private function greeter(?string $preferred = null): ?Capability
+    {
+        if ($preferred !== null && $this->has($preferred)) {
+            return $this->get($preferred);
+        }
+
+        foreach ($this->registered as $capability) {
+            if ($capability->frontPage() !== null) {
+                return $capability;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -129,17 +167,7 @@ final class Capabilities
      */
     public function frontPage(?string $preferred = null): ?string
     {
-        if ($preferred !== null && $this->has($preferred)) {
-            return $this->get($preferred)->frontPage();
-        }
-
-        foreach ($this->registered as $capability) {
-            if ($capability->frontPage() !== null) {
-                return $capability->frontPage();
-            }
-        }
-
-        return null;
+        return $this->greeter($preferred)?->frontPage();
     }
 
     /**
@@ -154,17 +182,7 @@ final class Capabilities
      */
     public function frontAction(?string $preferred = null): ?array
     {
-        if ($preferred !== null && $this->has($preferred)) {
-            return $this->get($preferred)->frontAction();
-        }
-
-        foreach ($this->registered as $capability) {
-            if ($capability->frontPage() !== null) {
-                return $capability->frontAction();
-            }
-        }
-
-        return null;
+        return $this->greeter($preferred)?->frontAction();
     }
 
     /**
