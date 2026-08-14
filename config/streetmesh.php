@@ -135,6 +135,34 @@ return [
 
     'plc' => [
         'directory' => env('STREETMESH_PLC_DIRECTORY', 'https://plc.directory'),
+
+        /*
+         | Whether this server also *keeps* a directory, at `/plc`.
+         |
+         | For development, and it exists so that a local identity costs nothing
+         | to arrange. The alternative was a container, a compose file and a
+         | daemon to remember — a Docker dependency bolted to a Laravel
+         | application for the sake of four endpoints, paid for by every
+         | developer downstream.
+         |
+         | Point `directory` above at it and there is no second host to set up:
+         |
+         |     STREETMESH_PLC_HOST=true
+         |     STREETMESH_PLC_DIRECTORY="${APP_URL}/plc"
+         |
+         | What it will not do is recover an identity. The real directory lets a
+         | higher-priority rotation key fork a chain and nullify what a lower
+         | one did, which is how somebody takes an identity back from a server
+         | that has gone bad; this refuses the conflict instead. That is the
+         | right trade for a development directory and the wrong one for a
+         | registry anybody relies on.
+         |
+         | Use the real directory in production. Identities kept here are as
+         | permanent as this server's database and resolvable by nobody else.
+         |
+         */
+
+        'host' => env('STREETMESH_PLC_HOST', false),
     ],
 
     'oauth' => [

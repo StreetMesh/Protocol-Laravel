@@ -70,6 +70,14 @@ final class Tickets
             'seat' => '',
             'taken' => array_values(array_unique($taken)),
 
+            /*
+             * Never. Being in a party means holding a permission somebody's own
+             * server issued, and a watcher is precisely somebody who has not
+             * been asked for one. Present so the two ticket shapes do not
+             * differ in their keys.
+             */
+            'party' => '',
+
             'exp' => now()->addSeconds(self::LIFETIME_SECONDS)->getTimestamp(),
             'jti' => bin2hex(random_bytes(16)),
         ], $identity->key(), $identity->keyId());
@@ -80,9 +88,16 @@ final class Tickets
      *                        at the other end
      * @param  array<int, string>  $taken  every seat this venue has filled, which
      *                                     is a thing only the venue knows
+     * @param  string  $party  the room name of the party this visitor is in, or
+     *                         empty for somebody here on their own
      */
-    public function mint(Delegation $visitor, string $room, string $seat = '', array $taken = []): string
-    {
+    public function mint(
+        Delegation $visitor,
+        string $room,
+        string $seat = '',
+        array $taken = [],
+        string $party = '',
+    ): string {
         if ($visitor->did === null) {
             throw new RuntimeException('Somebody who has not been seated cannot be given a ticket.');
         }
@@ -117,6 +132,23 @@ final class Tickets
              * that it holds none.
              */
             'taken' => array_values(array_unique($taken)),
+
+            /*
+             * Whether this person is here with other people, and which other
+             * people.
+             *
+             * Carried so a room can *show* it. Somebody in a party has their
+             * voice superseded by the party's, which makes them present and
+             * unhearable to everybody else in the room — and a person who
+             * cannot be told that is a person talking to a wall without knowing
+             * why. It is also the only thing making a private channel legible
+             * to the people it is being used beside.
+             *
+             * The party's room name rather than a flag, because it is the same
+             * name the party's own room is joined under and two spellings of
+             * one thing is one of them going stale.
+             */
+            'party' => $party,
 
             'exp' => now()->addSeconds(self::LIFETIME_SECONDS)->getTimestamp(),
             'jti' => bin2hex(random_bytes(16)),

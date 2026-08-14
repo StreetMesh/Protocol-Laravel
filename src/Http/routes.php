@@ -6,6 +6,7 @@ use StreetMesh\Protocol\Laravel\Http\ConsentController;
 use StreetMesh\Protocol\Laravel\Http\IdentityController;
 use StreetMesh\Protocol\Laravel\Http\PermissionController;
 use StreetMesh\Protocol\Laravel\Http\PermissionMetadataController;
+use StreetMesh\Protocol\Laravel\Plc\DirectoryController;
 use StreetMesh\Protocol\Laravel\Http\RepoController;
 
 /*
@@ -71,6 +72,38 @@ Route::middleware('streetmesh')->group(function (): void {
      */
     Route::post('xrpc/com.atproto.repo.createRecord', [RepoController::class, 'create'])
         ->name('streetmesh.repo.create');
+
+    /*
+     * A PLC directory, when this server keeps one.
+     *
+     * Here rather than in the group below, and that is not a detail: a
+     * directory is asked by other servers and by this one talking to itself,
+     * neither of which has a session. Behind `auth` it answered 401 to
+     * everybody, including its own resident registering.
+     *
+     * Under a prefix rather than at a host of its own, which costs nothing: the
+     * client builds every URL as the configured directory plus the identifier,
+     * so a path is as good as a hostname. Point `STREETMESH_PLC_DIRECTORY` at
+     * `<this server>/plc` and a developer needs no second host, no container
+     * and no daemon to remember.
+     *
+     * Registered whether or not this server keeps one, and refused per request
+     * inside. A config read while routes are being registered gets cached into
+     * the route table, and then turning the setting on appears to do nothing.
+     *
+     * `_health` first, or it is read as somebody's identifier.
+     */
+    Route::get('plc/_health', [DirectoryController::class, 'health'])
+        ->name('streetmesh.plc.health');
+
+    Route::get('plc/{did}/log/audit', [DirectoryController::class, 'log'])
+        ->name('streetmesh.plc.log');
+
+    Route::get('plc/{did}', [DirectoryController::class, 'resolve'])
+        ->name('streetmesh.plc.resolve');
+
+    Route::post('plc/{did}', [DirectoryController::class, 'submit'])
+        ->name('streetmesh.plc.submit');
 });
 
 /*

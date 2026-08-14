@@ -10,6 +10,7 @@ use StreetMesh\Protocol\Handle;
 use StreetMesh\Protocol\Laravel\Attestations\Attestations;
 use StreetMesh\Protocol\Laravel\Capabilities\Capabilities;
 use StreetMesh\Protocol\Laravel\Console\CheckIdentity;
+use StreetMesh\Protocol\Laravel\Plc\ImportIdentities;
 use StreetMesh\Protocol\Laravel\Http\LaravelNetwork;
 use StreetMesh\Protocol\Laravel\Identity\DidResolver;
 use StreetMesh\Protocol\Laravel\Identity\Identities;
@@ -105,7 +106,7 @@ class ProtocolServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'streetmesh');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CheckIdentity::class]);
+            $this->commands([CheckIdentity::class, ImportIdentities::class]);
         }
 
         $this->publishes([
